@@ -207,6 +207,8 @@ class EvolutionEngine:
                 spawn_log.append(
                     {"type": "LLM", "count": len(llm_mutants), "provider": self._llm_provider_name}
                 )
+            except EnterpriseFeatureError:
+                raise
             except Exception as e:
                 spawn_log.append({"type": "LLM", "count": 0, "error": str(e)})
 
