@@ -37,63 +37,13 @@ This repository contains the `hezgene-core` engine, licensed under the **Busines
 
 ### 1. High-Level System Flow
 
-The complete pipeline from initialization to deployed evolution:
 
-```mermaid
-flowchart TB
-    U[👤 User's Project] -->|hezgene init| H[🧬 HezGene Initialized]
-    H -->|hezgene run file.py| S[🔍 Scanner]
-    
-    S -->|Parse with AST| F[📂 Functions Found]
-    F -->|Extract each function| E[🧬 Evolution Engine]
-    
-    E -->|Spawn mutants| M[👾 5 Mutants]
-    M -->|Test all| A[🏟️ Fitness Arena]
-    A -->|Rank by score| W[🏆 Winner Selected]
-    
-    W -->|Better than original?| D{Deploy?}
-    D -->|Yes| DP[✅ Deploy Winner]
-    D -->|No| SK[⏭️ Keep Original]
-    
-    DP -->|Replace function| OG[📝 Original File Updated]
-    DP -->|Save copy| BU[💾 Backup Created]
-    
-    style H fill:#7c3aed,color:#fff
-    style E fill:#22c55e,color:#fff
-    style A fill:#06b6d4,color:#fff
-    style W fill:#f59e0b,color:#fff
-    style DP fill:#22c55e,color:#fff
-```
 
 ---
 
 ### 2. DNA Extraction Process
 
-Every function gets a genetic profile — its DNA. This is how HezGene understands your code at a molecular level:
 
-```mermaid
-flowchart LR
-    FUNC[📄 Function Source] --> PARSE[🔍 AST Parser]
-    PARSE --> METRICS[📊 Extract Metrics]
-    
-    METRICS --> COMPLEX[Complexity Score]
-    METRICS --> LOC[Line Count]
-    METRICS --> DEPS[Dependencies]
-    METRICS --> TYPES[Type Hints]
-    METRICS --> BUGS[Bug History]
-    
-    COMPLEX --> DNA[🧬 DNA Profile]
-    LOC --> DNA
-    DEPS --> DNA
-    TYPES --> DNA
-    BUGS --> DNA
-    
-    DNA --> SCORE[📈 Fitness Score]
-    DNA --> STORE[💾 DNA Registry]
-    
-    style DNA fill:#7c3aed,color:#fff
-    style SCORE fill:#22c55e,color:#fff
-```
 
 #### The DNA Genes
 
@@ -111,30 +61,7 @@ Functions with poor DNA evolve aggressively. Excellent functions evolve gently. 
 
 ### 3. Mutation Engine — 6 AST-Based Strategies
 
-The free core engine uses Python's Abstract Syntax Tree to generate intelligent code variants safely and predictably:
 
-```mermaid
-flowchart TB
-    ORIG[📄 Original Function] --> ENG[🧬 Mutation Engine]
-    
-    ENG --> M1[👾 Mutant 1<br/>Loop Unrolling<br/>for → list comprehension]
-    ENG --> M2[👾 Mutant 2<br/>Guard Clauses<br/>flatten nested if]
-    ENG --> M3[👾 Mutant 3<br/>Variable Inlining<br/>remove intermediates]
-    ENG --> M4[👾 Mutant 4<br/>Dead Code Removal<br/>strip unused code]
-    ENG --> M5[👾 Mutant 5<br/>Constant Folding<br/>pre-compute constants]
-    
-    M1 --> VALID{Valid Python?}
-    M2 --> VALID
-    M3 --> VALID
-    M4 --> VALID
-    M5 --> VALID
-    
-    VALID -->|Yes| ARENA[🏟️ Enter Arena]
-    VALID -->|No| DISCARD[❌ Discard]
-    
-    style ENG fill:#22c55e,color:#fff
-    style ARENA fill:#06b6d4,color:#fff
-```
 
 #### Mutation Strategies
 
@@ -153,30 +80,7 @@ Every mutant is validated as syntactically correct Python before entering the ar
 
 ### 4. Fitness Gauntlet — 5 Rings of Trial
 
-Mutants don't just replace the original. They have to **WIN** through five brutal rings:
 
-```mermaid
-flowchart TB
-    ALL[👾 All Mutants + Original] --> R1[🥊 Ring 1: Correctness<br/>Same outputs?]
-    
-    R1 -->|Pass| R2[⚡ Ring 2: Speed<br/>Execution timing]
-    R1 -->|Fail| DEAD[💀 Eliminated]
-    
-    R2 --> R3[💾 Ring 3: Memory<br/>Allocation tracking]
-    R3 --> R4[🧪 Ring 4: Edge Cases<br/>Weird inputs]
-    R4 --> R5[📖 Ring 5: Readability<br/>Code clarity]
-    
-    R5 --> COMP[📊 Composite Score]
-    COMP --> RANK[📋 Rank All]
-    RANK --> WIN[🏆 Winner]
-    
-    style R1 fill:#ef4444,color:#fff
-    style R2 fill:#f59e0b,color:#fff
-    style R3 fill:#8b5cf6,color:#fff
-    style R4 fill:#ec4899,color:#fff
-    style R5 fill:#06b6d4,color:#fff
-    style WIN fill:#22c55e,color:#fff
-```
 
 #### Ring Details
 
