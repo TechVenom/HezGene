@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hezgene-core"
+version = "0.1.0"
+description = "Open-source genetic software evolution engine."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Hezron Paipai", email = "venomx.agent.future@proton.me" },
+]
+keywords = ["evolution", "genetic", "ast", "code-optimization", "open-source"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+    "rich-click>=1.7",
+    "psutil>=5.9",
+    "gitpython>=3.1",
+    "ast-comments>=1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1",
+    "black>=23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/TechVenom/Hezgene-Core"
+Repository = "https://github.com/TechVenom/Hezgene-Core"
+Enterprise = "https://hezgene.ai"
+
+[project.scripts]
+hezgene = "hezgene.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hezgene"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
