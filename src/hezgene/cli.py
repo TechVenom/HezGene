@@ -290,26 +290,14 @@ Example:
 """)
 def web():
     """Start the HezGene Web Interface."""
-    import subprocess
-    from pathlib import Path
-
-    # Check package relative location first, then workspace root
-    frontend_dir = Path(__file__).parent.parent.parent / "enterprise" / "frontend"
-    if not frontend_dir.exists():
-        frontend_dir = Path("enterprise/frontend")
-
-    if frontend_dir.exists():
-        console.print(
-            f"[bold cyan]Launching HezGene Web Dashboard via npm run dev:all in {frontend_dir}...[/]"
-        )
-        try:
-            subprocess.run("npm run dev:all", shell=True, cwd=str(frontend_dir), check=True)
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Dashboard stopped.[/]")
-        except Exception as e:
-            console.print(f"[bold red]Failed to run dashboard: {e}[/]")
-    else:
+    try:
+        from hezgene_enterprise.web.launcher import launch_dashboard
+        launch_dashboard()
+    except ImportError:
+        from rich.console import Console
         from hezgene.core.exceptions import EnterpriseFeatureError
+        
+        console = Console()
         err = EnterpriseFeatureError("web_dashboard")
         console.print(err.rich_message())
 
