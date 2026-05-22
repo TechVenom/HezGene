@@ -110,5 +110,4 @@ software evolve. 🧬
 
 ## License
 
-By contributing, you agree that your contributions will be licensed
-under the MIT License.
+By contributing, you agree that your contributions will be licensed under the **Business Source License 1.1** as defined in the `LICENSE` file. All contributions will automatically convert to the MIT License on the Change Date (May 22, 2030).

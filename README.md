@@ -1,12 +1,12 @@
 # 🧬 Hezgene-Core
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![Build Status](https://github.com/TechVenom/Hezgene-Core/actions/workflows/test.yml/badge.svg)
 
 **Hezgene-Core** is an autonomous genetic software evolution engine. It treats your Python functions like DNA, applying AST (Abstract Syntax Tree) mutations to breed faster, more efficient, and more readable variations of your code. Mutants are tested in a rigorous Fitness Gauntlet, and only the mathematically superior code survives.
 
-This is the free, fully functional, MIT-licensed core engine.
+This is the fully functional core engine, licensed under the **Business Source License 1.1** (free for non-commercial use, converts to MIT in 4 years).
 
 ---
 
@@ -82,4 +82,10 @@ pip install -e ".[dev]"
 
 ## 📄 License
 
-MIT License. See the `LICENSE` file for more details.
+**Business Source License 1.1**
+
+HezGene Core is free to use for non-commercial and educational purposes. 
+
+Any commercial use—including incorporating it into a commercial product, offering it as a SaaS, or using it for commercial consulting—requires a paid commercial license. 
+
+To protect the open-source ecosystem, the license automatically converts to the **MIT License** on May 22, 2030 (4 years from the initial release). See the `LICENSE` file for full details.
