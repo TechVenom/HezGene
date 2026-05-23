@@ -50,24 +50,26 @@ class EvolutionEngine:
         self._llm_provider_name = llm_provider
         self._llm_model = llm_model
 
-        # Probe for enterprise package
-        try:
-            import hezgene_enterprise  # noqa: F401
+        # Probe for enterprise package only if explicitly launched in pro mode
+        import os
+        if os.environ.get("HEZGENE_ENTERPRISE_MODE") == "1":
+            try:
+                import hezgene_enterprise  # noqa: F401
 
-            self.has_enterprise = True
-        except ImportError:
-            # Try local development fallback
-            import sys
+                self.has_enterprise = True
+            except ImportError:
+                # Try local development fallback
+                import sys
 
-            ent_path = Path(project_root) / "enterprise" / "src"
-            if ent_path.exists() and str(ent_path) not in sys.path:
-                sys.path.insert(0, str(ent_path))
-                try:
-                    import hezgene_enterprise  # noqa: F401
+                ent_path = Path(project_root) / "enterprise" / "src"
+                if ent_path.exists() and str(ent_path) not in sys.path:
+                    sys.path.insert(0, str(ent_path))
+                    try:
+                        import hezgene_enterprise  # noqa: F401
 
-                    self.has_enterprise = True
-                except ImportError:
-                    pass
+                        self.has_enterprise = True
+                    except ImportError:
+                        pass
 
         # Load config to check for LLM settings
         self._load_config()

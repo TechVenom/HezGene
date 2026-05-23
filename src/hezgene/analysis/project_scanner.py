@@ -31,7 +31,8 @@ class ProjectScanner:
 
         # Find all Python files excluding virtual environments and hidden dirs
         for py_file in path.rglob("*.py"):
-            if any(part.startswith(".") for part in py_file.parts) or "venv" in py_file.parts:
+            parts = py_file.parts
+            if any(part.startswith(".") for part in parts) or "venv" in parts or "__pycache__" in parts or "node_modules" in parts:
                 continue
 
             try:

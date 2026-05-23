@@ -66,6 +66,28 @@ from rich.rule import Rule
 from rich.syntax import Syntax
 from rich.table import Table
 
+import os
+import json
+import sys
+
+def autonomous_options(f):
+    import rich_click as click
+    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
+    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
+    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
+    return f
+
+def is_autonomous(non_interactive):
+    import os
+    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
+
+def print_json_and_exit(data, exit_code=0):
+    import json
+    import sys
+    print(json.dumps(data, indent=2))
+    sys.exit(exit_code)
+
+
 from hezgene.analysis.file_ingestor import FileIngestor
 from hezgene.core.engine import EvolutionEngine
 
@@ -81,6 +103,7 @@ def _parse_target(target_args: tuple[str, ...]) -> str:
     return f"{target_args[0]}:{target_args[1]}"
 
 
+@click.version_option(version="1.0.0")
 @click.group(help="""
 # 🧬 HezGene — The DNA of Software
 
@@ -132,7 +155,8 @@ and the Sandbox. Run this once per project before evolving any code.
 Example:
   hezgene init
 """)
-def init():
+@autonomous_options
+def init(non_interactive, output, yes):
     """Initialize HezGene in the current project."""
     from pathlib import Path
 
@@ -140,8 +164,12 @@ def init():
     hezgene_dir.mkdir(exist_ok=True)
     (hezgene_dir / "dna_registry.json").write_text("{}", encoding="utf-8")
     (hezgene_dir / "backups").mkdir(exist_ok=True)
+
     (hezgene_dir / "sandbox").mkdir(exist_ok=True)
+    if output == "json":
+        print_json_and_exit({"status": "success", "message": "HezGene initialized!"}, 0)
     console.print(
+
         Panel(
             "[bold green]HezGene initialized![/]\n\n"
             "Your project now has genetic evolution.\n"
@@ -163,11 +191,34 @@ the connection to your configured LLM provider.
 Example:
   hezgene status
 """)
-def status():
+@autonomous_options
+def status(non_interactive, output, yes):
     """Show the current system status and test LLM connection."""
     from pathlib import Path
 
     from rich.table import Table
+
+import os
+import json
+import sys
+
+def autonomous_options(f):
+    import rich_click as click
+    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
+    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
+    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
+    return f
+
+def is_autonomous(non_interactive):
+    import os
+    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
+
+def print_json_and_exit(data, exit_code=0):
+    import json
+    import sys
+    print(json.dumps(data, indent=2))
+    sys.exit(exit_code)
+
 
     from hezgene.core.config import HezGeneConfig
     from hezgene.core.dna_tracker import DNATracker
@@ -256,7 +307,8 @@ Example:
   hezgene clean --all
 """)
 @click.option("--all", "clear_dna", is_flag=True, help="Clear DNA registry as well as sandbox")
-def clean(clear_dna):
+@autonomous_options
+def clean(clear_dna, non_interactive, output, yes):
     """Clear the sandbox and optionally the DNA registry."""
     from pathlib import Path
 
@@ -288,7 +340,8 @@ you to manage code evolution, view the DNA explorer, and watch live battles.
 Example:
   hezgene web
 """)
-def web():
+@autonomous_options
+def web(non_interactive, output, yes):
     """Start the HezGene Web Interface."""
     try:
         from hezgene_enterprise.web.launcher import launch_dashboard
@@ -318,7 +371,8 @@ Example:
   hezgene verify examples/test_filter.py filter_active_users
 """)
 @click.argument("target_args", nargs=-1)
-def verify(target_args):
+@autonomous_options
+def verify(target_args, non_interactive, output, yes):
     """Verify evolved code produces identical outputs to originals."""
     import ast
     from pathlib import Path
@@ -328,9 +382,13 @@ def verify(target_args):
     parsed_target = _parse_target(target_args)
     sandbox_dir = Path(".hezgene") / "sandbox"
 
+
     if not sandbox_dir.exists():
+        if output == "json":
+            print_json_and_exit({"status": "error", "message": "No sandbox found."}, 2)
         console.print("[yellow]No sandbox found. Run 'hezgene run' first.[/]")
         return
+
 
     console.print(Rule("HezGene -- Verification"))
     console.print()
@@ -442,8 +500,16 @@ def verify(target_args):
             console.print(f"  [red]✗[/] {fname} — [red]FAIL[/] on input: {fail_input}")
             total_fail += 1
 
+
+    if output == "json":
+        if total_fail > 0:
+            print_json_and_exit({"status": "error", "passed": total_pass, "failed": total_fail}, 4)
+        else:
+            print_json_and_exit({"status": "success", "passed": total_pass, "failed": total_fail}, 0)
+
     console.print()
     if total_fail == 0 and total_pass > 0:
+
         console.print(
             Panel(f"[bold green]All {total_pass} verifications passed![/]", border_style="green")
         )
@@ -537,6 +603,7 @@ Example:
 @click.option(
     "--model", "llm_model", default="", help="LLM model name (e.g. codellama, gpt-4o-mini)"
 )
+@autonomous_options
 @click.option(
     "--verbose",
     "-v",
@@ -554,6 +621,9 @@ def run(
     llm_provider,
     llm_model,
     verbose,
+    non_interactive,
+    output,
+    yes
 ):
     """Run evolution. Results go to sandbox by default. Use --apply to modify originals."""
     engine = EvolutionEngine(
@@ -599,13 +669,58 @@ def run(
         if target_path.is_file():
             _print_analysis(target_path)
 
+
         try:
             result = engine.evolve(target_to_run, generations=generations, apply=apply)
+            
+            if output == "json":
+                results_list = result if isinstance(result, list) else [result]
+                evolved = []
+                unchanged = 0
+                errors = 0
+                for r in results_list:
+                    if r.get("status") == "evolved":
+                        impr = r.get("improvements", {})
+                        evolved.append({
+                            "function": r.get("target", "").split(":")[-1],
+                            "file": r.get("target", "").split(":")[0],
+                            "strategy": r.get("battle_results", [{}])[0].get("strategy", ""),
+                            "fitness_before": impr.get("fitness_before", 0),
+                            "fitness_after": impr.get("fitness_after", 0),
+                            "speed_change": f"{impr.get('speed_change_ms', 0)}ms",
+                            "memory_change": f"{impr.get('memory_change_bytes', 0)}B",
+                            "lines_before": 0,
+                            "lines_after": 0
+                        })
+                    elif r.get("status") == "error":
+                        errors += 1
+                    else:
+                        unchanged += 1
+                
+                final_json = {
+                    "status": "success" if evolved else ("no_improvement" if unchanged else "error"),
+                    "evolved": evolved,
+                    "unchanged": unchanged,
+                    "errors": errors,
+                    "sandbox_path": ".hezgene/sandbox/" if not apply else None,
+                    "duration_seconds": 0.0
+                }
+                if not evolved and not unchanged and errors > 0:
+                    print_json_and_exit(final_json, 1)
+                if not evolved and unchanged == 0 and errors == 0:
+                    print_json_and_exit(final_json, 3)
+                if not evolved and unchanged > 0:
+                    print_json_and_exit(final_json, 4)
+                print_json_and_exit(final_json, 0)
+                
             if isinstance(result, list):
                 _print_summary(result, apply, verbose)
             else:
                 _print_result(result, apply, verbose=True)
         except Exception as e:
+            if output == "json":
+                print_json_and_exit({"status": "error", "error": str(e)}, 1)
+
             if "EnterpriseFeatureError" in type(e).__name__ or "Enterprise" in str(e):
                 from hezgene.core.exceptions import EnterpriseFeatureError
                 if isinstance(e, EnterpriseFeatureError):
@@ -628,15 +743,47 @@ Example:
   hezgene scan src/main.py
 """)
 @click.argument("target_args", nargs=-1)
-def scan(target_args):
+@autonomous_options
+def scan(target_args, non_interactive, output, yes):
     """Analyze a file and show what's evolvable."""
     path = _parse_target(target_args)
     if not path:
+        if output == "json":
+            print_json_and_exit({"status": "error", "message": "Please provide a file to scan."}, 1)
         console.print("[red]Please provide a file to scan.[/]")
         return
     from pathlib import Path
-
-    _print_analysis(Path(path))
+    
+    target_path = Path(path)
+    if target_path.is_dir():
+        from hezgene.core.engine import EvolutionEngine
+        engine = EvolutionEngine()
+        targets = engine.scanner.scan_directory(target_path)
+        
+        if output == "json":
+            if not targets:
+                print_json_and_exit({"status": "error", "message": "No evolvable Python files found"}, 3)
+            print_json_and_exit({"status": "success", "targets": targets}, 0)
+            
+        files = set(Path(engine.project_root) / t.split(":")[0] for t in targets)
+        if not files:
+            console.print(f"[yellow]No evolvable Python files found in {target_path}.[/]")
+            return
+            
+        for f in sorted(files):
+            _print_analysis(f)
+    else:
+        if output == "json":
+            from hezgene.analysis.file_ingestor import FileIngestor
+            try:
+                info = FileIngestor.analyze_file(str(target_path))
+                print_json_and_exit({"status": "success", "info": {
+                    "total_functions": info["total_functions"],
+                    "evolvable": [f.name for f in info["evolvable"]]
+                }}, 0)
+            except Exception as e:
+                print_json_and_exit({"status": "error", "message": str(e)}, 1)
+        _print_analysis(target_path)
 
 
 @main.command(help="""
@@ -649,10 +796,13 @@ Example:
   hezgene dna src/utils.py:process_data
 """)
 @click.argument("target_args", nargs=-1)
-def dna(target_args):
+@autonomous_options
+def dna(target_args, non_interactive, output, yes):
     """Show the DNA profile for a function or file."""
     target = _parse_target(target_args)
     if not target:
+        if output == "json":
+            print_json_and_exit({"status": "error", "message": "Please provide a target."}, 1)
         console.print("[red]Please provide a target.[/]")
         return
 
@@ -686,6 +836,38 @@ def dna(target_args):
     from hezgene.evaluation.gauntlet import FitnessGauntlet
 
     gauntlet = FitnessGauntlet()
+
+    if output == "json":
+        res = []
+        for func in funcs:
+            func_target = f"{file_path}:{func.qualified_name or func.name}"
+            func_dna = engine.dna_tracker.get_dna(func_target)
+            if not func_dna:
+                func_dna = FunctionDNA(
+                    name=func.name,
+                    module=file_path.replace("/", ".").replace(".py", ""),
+                    qualified_name=func.qualified_name or func.name,
+                    source_code=func.source_code,
+                    lines_of_code=func.lines_of_code,
+                    cyclomatic_complexity=func.cyclomatic_complexity,
+                    halstead_effort=func.halstead_effort,
+                    halstead_volume=func.halstead_volume,
+                    maintainability_index=func.maintainability_index,
+                )
+                baseline = gauntlet._evaluate_single(func_dna, func_dna)
+                func_dna.avg_execution_time_ms = baseline.avg_speed_ms
+                func_dna.peak_memory_bytes = baseline.peak_memory_bytes
+                func_dna.readability_score = baseline.readability_score
+            res.append({
+                "function": func.qualified_name or func.name,
+                "file": file_path,
+                "loc": func_dna.lines_of_code,
+                "complexity": func_dna.cyclomatic_complexity,
+                "speed_ms": getattr(func_dna, 'avg_execution_time_ms', 0),
+                "memory_bytes": getattr(func_dna, 'peak_memory_bytes', 0),
+                "fitness": getattr(func_dna, 'fitness_score', 0)
+            })
+        print_json_and_exit({"status": "success", "dna": res}, 0)
 
     for func in funcs:
         func_target = f"{file_path}:{func.qualified_name or func.name}"
@@ -795,14 +977,20 @@ across your project.
 Example:
   hezgene log
 """)
-def log():
+@autonomous_options
+def log(non_interactive, output, yes):
     """Show evolution history."""
     engine = EvolutionEngine()
     entries = engine.dna_tracker.get_evolution_log()
 
     if not entries:
+        if output == "json":
+            print_json_and_exit({"status": "success", "history": []}, 0)
         console.print("[yellow]No evolution history yet.[/]")
         return
+        
+    if output == "json":
+        print_json_and_exit({"status": "success", "history": entries}, 0)
 
     table = Table(title="Evolution Log", border_style="magenta")
     table.add_column("Function", style="bold")
@@ -830,7 +1018,8 @@ Example:
   hezgene freeze src/auth.py:verify_token
 """)
 @click.argument("target_args", nargs=-1)
-def freeze(target_args):
+@autonomous_options
+def freeze(target_args, non_interactive, output, yes):
     """Freeze a function -- stop it from evolving."""
     target = _parse_target(target_args)
     if not target:
@@ -850,7 +1039,8 @@ Example:
   hezgene unfreeze src/auth.py:verify_token
 """)
 @click.argument("target_args", nargs=-1)
-def unfreeze(target_args):
+@autonomous_options
+def unfreeze(target_args, non_interactive, output, yes):
     """Unfreeze a function -- resume evolution."""
     target = _parse_target(target_args)
     if not target:
@@ -871,7 +1061,8 @@ Example:
   hezgene rollback src/utils.py:process_data
 """)
 @click.argument("target_args", nargs=-1)
-def rollback(target_args):
+@autonomous_options
+def rollback(target_args, non_interactive, output, yes):
     """Revert a deployed evolution back to the previous version."""
     target = _parse_target(target_args)
     if not target:
@@ -906,7 +1097,8 @@ Example:
 @click.option("--set", "set_var", nargs=2, help="Set a config value (key value)")
 @click.option("--get", "get_var", default="", help="Get a config value by key")
 @click.option("--list", "list_vars", is_flag=True, help="List all configurations")
-def config(set_var, get_var, list_vars):
+@autonomous_options
+def config(set_var, get_var, list_vars, non_interactive, output, yes):
     """Configure global HezGene settings."""
     from hezgene.core.config import HezGeneConfig
 
@@ -926,6 +1118,8 @@ def config(set_var, get_var, list_vars):
 
     elif list_vars:
         all_config = cfg.get_all()
+        if output == "json":
+            print_json_and_exit({"status": "success", "config": all_config}, 0)
         table = Table(title="HezGene Configuration", border_style="cyan")
         table.add_column("Key", style="bold")
         table.add_column("Value", style="green")
@@ -967,7 +1161,8 @@ Example:
 @click.option("--test", "test_prompt", default="", help="Send a test prompt")
 @click.option("--provider", default="", help="Override provider")
 @click.option("--model", default="", help="Override model")
-def llm(status, list_models, test_prompt, provider, model):
+@autonomous_options
+def llm(status, list_models, test_prompt, provider, model, non_interactive, output, yes):
     """Manage LLM providers for intelligent mutations."""
     from hezgene.core.config import HezGeneConfig
     from hezgene.mutation.llm import get_provider, list_providers
@@ -1076,6 +1271,28 @@ def _print_battle_arena(result: dict):
     """Print the full battle arena showing all mutants, their scores, and the fight."""
     from rich.table import Table
 
+import os
+import json
+import sys
+
+def autonomous_options(f):
+    import rich_click as click
+    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
+    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
+    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
+    return f
+
+def is_autonomous(non_interactive):
+    import os
+    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
+
+def print_json_and_exit(data, exit_code=0):
+    import json
+    import sys
+    print(json.dumps(data, indent=2))
+    sys.exit(exit_code)
+
+
     target = result.get("target", "?")
     short_target = target.split(":")[-1] if ":" in target else target
     baseline = result.get("baseline", {})
@@ -1176,6 +1393,28 @@ def _print_battle_arena(result: dict):
 def _print_result(result: dict, applied: bool = False, verbose: bool = False):
     """Print single evolution result with optional battle arena."""
     from rich.table import Table
+
+import os
+import json
+import sys
+
+def autonomous_options(f):
+    import rich_click as click
+    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
+    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
+    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
+    return f
+
+def is_autonomous(non_interactive):
+    import os
+    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
+
+def print_json_and_exit(data, exit_code=0):
+    import json
+    import sys
+    print(json.dumps(data, indent=2))
+    sys.exit(exit_code)
+
 
     status = result.get("status", "unknown")
     target = result.get("target", "?")
@@ -1363,7 +1602,8 @@ def license():
 
 @license.command(name="activate", help="Activate a license key.")
 @click.argument("key")
-def license_activate(key):
+@autonomous_options
+def license_activate(key, non_interactive, output, yes):
     """Activate a HezGene Enterprise license key."""
     try:
         from hezgene_enterprise.team.license_manager import LicenseManager
@@ -1404,7 +1644,8 @@ def license_activate(key):
 
 
 @license.command(name="status", help="Check license status.")
-def license_status():
+@autonomous_options
+def license_status(non_interactive, output, yes):
     """Show the current license status."""
     try:
         from hezgene_enterprise.team.license_manager import LicenseManager
@@ -1448,7 +1689,8 @@ def license_status():
 
 
 @license.command(name="deactivate", help="Deactivate the current license.")
-def license_deactivate():
+@autonomous_options
+def license_deactivate(non_interactive, output, yes):
     """Deactivate the current license."""
     try:
         from hezgene_enterprise.team.license_manager import LicenseManager

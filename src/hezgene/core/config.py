@@ -10,6 +10,7 @@ Config is stored in .hezgene/config.json and supports:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +77,25 @@ class HezGeneConfig:
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a config value using dot notation (e.g. 'llm.provider')."""
+        env_map = {
+            "llm.provider": "HEZGENE_LLM_PROVIDER",
+            "llm.model": "HEZGENE_LLM_MODEL",
+            "llm.api_key": "HEZGENE_API_KEY",
+            "evolution.min_improvement": "HEZGENE_MIN_IMPROVEMENT",
+            "evolution.generations": "HEZGENE_MAX_GENERATIONS",
+            "safety.sandbox_dir": "HEZGENE_SANDBOX_DIR",
+        }
+        if key in env_map and env_map[key] in os.environ:
+            val = os.environ[env_map[key]]
+            try:
+                if key in ["evolution.min_improvement"]:
+                    return float(val)
+                if key in ["evolution.generations"]:
+                    return int(val)
+            except ValueError:
+                pass
+            return val
+
         parts = key.split(".")
         current = self._config
         for part in parts:
@@ -121,9 +141,9 @@ class HezGeneConfig:
         """Get LLM-specific config as a flat dict for provider init."""
         llm = self._config.get("llm", {})
         return {
-            "model": llm.get("model", ""),
-            "base_url": llm.get("base_url", ""),
-            "api_key": llm.get("api_key", ""),
+            "model": os.environ.get("HEZGENE_LLM_MODEL", llm.get("model", "")),
+            "base_url": os.environ.get("HEZGENE_BASE_URL", llm.get("base_url", "")),
+            "api_key": os.environ.get("HEZGENE_API_KEY", llm.get("api_key", "")),
             "temperature": llm.get("temperature", 0.3),
             "max_tokens": llm.get("max_tokens", 4096),
             "timeout": llm.get("timeout", 120),
@@ -131,8 +151,10 @@ class HezGeneConfig:
 
     def get_llm_provider_name(self) -> str:
         """Get the configured LLM provider name."""
-        return self._config.get("llm", {}).get("provider", "ollama")
+        return os.environ.get("HEZGENE_LLM_PROVIDER", self._config.get("llm", {}).get("provider", "ollama"))
 
     def is_llm_enabled(self) -> bool:
         """Check if LLM mutations are enabled."""
+        if "HEZGENE_LLM_PROVIDER" in os.environ or "HEZGENE_LLM_MODEL" in os.environ:
+            return True
         return self._config.get("evolution", {}).get("use_llm", False)
