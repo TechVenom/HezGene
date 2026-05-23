@@ -5,7 +5,6 @@ from pathlib import Path
 from hezgene.analysis.file_ingestor import FileIngestor
 from hezgene.analysis.project_scanner import ProjectScanner
 from hezgene.core.dna_tracker import DNATracker
-from hezgene.core.exceptions import EnterpriseFeatureError
 from hezgene.deployment.deployer import AutoDeployer
 from hezgene.evaluation.gauntlet import FitnessGauntlet
 from hezgene.evaluation.tournament import TournamentManager
@@ -44,32 +43,10 @@ class EvolutionEngine:
         self.deployer = AutoDeployer(project_root)
         self.scanner = ProjectScanner(project_root, self.dna_tracker)
 
-        # Enterprise components — loaded only if installed
-        self.has_enterprise = False
+        # LLM Mutator properties
         self._llm_mutator = None
         self._llm_provider_name = llm_provider
         self._llm_model = llm_model
-
-        # Probe for enterprise package only if explicitly launched in pro mode
-        import os
-        if os.environ.get("HEZGENE_ENTERPRISE_MODE") == "1":
-            try:
-                import hezgene_enterprise  # noqa: F401
-
-                self.has_enterprise = True
-            except ImportError:
-                # Try local development fallback
-                import sys
-
-                ent_path = Path(project_root) / "enterprise" / "src"
-                if ent_path.exists() and str(ent_path) not in sys.path:
-                    sys.path.insert(0, str(ent_path))
-                    try:
-                        import hezgene_enterprise  # noqa: F401
-
-                        self.has_enterprise = True
-                    except ImportError:
-                        pass
 
         # Load config to check for LLM settings
         self._load_config()
@@ -96,11 +73,8 @@ class EvolutionEngine:
     def _get_llm_mutator(self):
         """Lazy-initialize the LLM mutator on first use."""
         if self._llm_mutator is None:
-            if not self.has_enterprise:
-                raise EnterpriseFeatureError("llm_mutations")
-
-            from hezgene_enterprise.mutation.llm import get_provider
-            from hezgene_enterprise.mutation.llm_mutator import LLMMutator
+            from hezgene.mutation.llm import get_provider
+            from hezgene.mutation.llm_mutator import LLMMutator
 
             provider_name = self._llm_provider_name or "ollama"
 
@@ -209,8 +183,6 @@ class EvolutionEngine:
                 spawn_log.append(
                     {"type": "LLM", "count": len(llm_mutants), "provider": self._llm_provider_name}
                 )
-            except EnterpriseFeatureError:
-                raise
             except Exception as e:
                 spawn_log.append({"type": "LLM", "count": 0, "error": str(e)})
 

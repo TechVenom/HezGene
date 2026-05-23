@@ -3,24 +3,24 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hezgene-core"
-version = "0.1.0"
-description = "Open-source genetic software evolution engine."
+name = "hezgene"
+version = "1.0.0"
+description = "Autonomous genetic software evolution — code that improves itself"
 readme = "README.md"
-license = "BUSL-1.1"
-requires-python = ">=3.10"
+license = {text = "MIT"}
 authors = [
-    { name = "Hezron Paipai", email = "venomx.agent.future@proton.me" },
+    {name = "Hezron Paipai", email = "venomx.agent.future@proton.me"}
 ]
-keywords = ["evolution", "genetic", "ast", "code-optimization", "open-source"]
+keywords = ["evolution", "genetic", "self-improving", "optimization", "autonomous"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Code Generators",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "click>=8.0",
@@ -29,9 +29,20 @@ dependencies = [
     "psutil>=5.9",
     "gitpython>=3.1",
     "ast-comments>=1.2",
+    "fastapi>=0.104",
+    "uvicorn>=0.23",
+    "websockets>=11.0",
 ]
 
 [project.optional-dependencies]
+llm-openai = ["openai>=1.0"]
+llm-anthropic = ["anthropic>=0.18"]
+llm-google = ["google-generativeai>=0.4"]
+all-llm = [
+    "openai>=1.0",
+    "anthropic>=0.18",
+    "google-generativeai>=0.4",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -39,13 +50,14 @@ dev = [
     "black>=23.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/TechVenom/Hezgene-Core"
-Repository = "https://github.com/TechVenom/Hezgene-Core"
-Enterprise = "https://hezgene.ai"
-
 [project.scripts]
 hezgene = "hezgene.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/TechVenom/HezGene"
+Documentation = "https://github.com/TechVenom/HezGene/tree/main/docs"
+Repository = "https://github.com/TechVenom/HezGene.git"
+Issues = "https://github.com/TechVenom/HezGene/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hezgene"]

@@ -198,27 +198,6 @@ def status(non_interactive, output, yes):
 
     from rich.table import Table
 
-import os
-import json
-import sys
-
-def autonomous_options(f):
-    import rich_click as click
-    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
-    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
-    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
-    return f
-
-def is_autonomous(non_interactive):
-    import os
-    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
-
-def print_json_and_exit(data, exit_code=0):
-    import json
-    import sys
-    print(json.dumps(data, indent=2))
-    sys.exit(exit_code)
-
 
     from hezgene.core.config import HezGeneConfig
     from hezgene.core.dna_tracker import DNATracker
@@ -230,20 +209,7 @@ def print_json_and_exit(data, exit_code=0):
     provider_name = cfg.get_llm_provider_name()
     model_name = cfg.get("llm.model", "(default)")
 
-    # Check enterprise / license status
-    engine = EvolutionEngine()
     tier = "Community (Free)"
-    if engine.has_enterprise:
-        try:
-            from hezgene_enterprise.team.license_manager import LicenseManager
-            lm = LicenseManager()
-            lic = lm.get_license()
-            if lic:
-                tier = f"{lic.plan_name} ({lic.days_remaining} days remaining)"
-            else:
-                tier = "Enterprise (no active license)"
-        except Exception:
-            tier = "Enterprise (installed)"
 
     evolved_count = 0
     if is_init:
@@ -262,37 +228,33 @@ def print_json_and_exit(data, exit_code=0):
     table.add_row("Evolved Functions", str(evolved_count))
     table.add_row("LLM Provider", provider_name)
     table.add_row("LLM Model", model_name)
-    table.add_row("Enterprise", "[green]✅ Installed[/]" if engine.has_enterprise else "[dim]Not installed[/]")
+
 
     console.print()
     console.print(table)
 
-    # Test LLM Connection (only if enterprise is available)
-    if engine.has_enterprise:
-        console.print("\n[dim]Testing LLM Connection...[/]")
-        try:
-            from hezgene_enterprise.mutation.llm import get_provider
-            provider = get_provider(provider_name, **cfg.get_llm_config())
-            model_name = cfg.get("llm.model") or provider.model
-            console.print(f"[dim]Pinging {provider_name} ({model_name})...[/]")
-            res = provider.generate("Respond with exactly: 'Hello HezGene! I am connected.'")
+    # Test LLM Connection
+    console.print("\n[dim]Testing LLM Connection...[/]")
+    try:
+        from hezgene.mutation.llm import get_provider
+        provider = get_provider(provider_name, **cfg.get_llm_config())
+        model_name = cfg.get("llm.model") or provider.model
+        console.print(f"[dim]Pinging {provider_name} ({model_name})...[/]")
+        res = provider.generate("Respond with exactly: 'Hello HezGene! I am connected.'")
 
-            if not res.success:
-                console.print(f"[bold red]❌ Connection failed:[/] {res.error}")
+        if not res.success:
+            console.print(f"[bold red]❌ Connection failed:[/] {res.error}")
+        else:
+            response_text = res.text.strip()
+            if response_text:
+                console.print(f"[bold green]✅ Connected to {provider_name} successfully![/]")
+                console.print(f"[cyan]🤖 Model replied:[/] {response_text}")
             else:
-                response_text = res.text.strip()
-                if response_text:
-                    console.print(f"[bold green]✅ Connected to {provider_name} successfully![/]")
-                    console.print(f"[cyan]🤖 Model replied:[/] {response_text}")
-                else:
-                    console.print(
-                        f"[bold yellow]⚠️ Connected, but received an empty response from {provider_name}.[/]"
-                    )
-        except Exception as e:
-            console.print(f"[bold red]❌ Failed to connect to {provider_name}: {str(e)}[/]")
-    else:
-        console.print("\n[dim]LLM connection test skipped (Enterprise not installed).[/]")
-        console.print("[dim]Upgrade at https://hezgene.ai/pricing to unlock LLM mutations.[/]")
+                console.print(
+                    f"[bold yellow]⚠️ Connected, but received an empty response from {provider_name}.[/]"
+                )
+    except Exception as e:
+        console.print(f"[bold red]❌ Failed to connect to {provider_name}: {str(e)}[/]")
     console.print()
 
 
@@ -343,16 +305,8 @@ Example:
 @autonomous_options
 def web(non_interactive, output, yes):
     """Start the HezGene Web Interface."""
-    try:
-        from hezgene_enterprise.web.launcher import launch_dashboard
-        launch_dashboard()
-    except ImportError:
-        from rich.console import Console
-        from hezgene.core.exceptions import EnterpriseFeatureError
-        
-        console = Console()
-        err = EnterpriseFeatureError("web_dashboard")
-        console.print(err.rich_message())
+    from hezgene.web.launcher import launch_dashboard
+    launch_dashboard()
 
 
 @main.command(help="""
@@ -1271,27 +1225,6 @@ def _print_battle_arena(result: dict):
     """Print the full battle arena showing all mutants, their scores, and the fight."""
     from rich.table import Table
 
-import os
-import json
-import sys
-
-def autonomous_options(f):
-    import rich_click as click
-    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
-    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
-    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
-    return f
-
-def is_autonomous(non_interactive):
-    import os
-    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
-
-def print_json_and_exit(data, exit_code=0):
-    import json
-    import sys
-    print(json.dumps(data, indent=2))
-    sys.exit(exit_code)
-
 
     target = result.get("target", "?")
     short_target = target.split(":")[-1] if ":" in target else target
@@ -1393,27 +1326,6 @@ def print_json_and_exit(data, exit_code=0):
 def _print_result(result: dict, applied: bool = False, verbose: bool = False):
     """Print single evolution result with optional battle arena."""
     from rich.table import Table
-
-import os
-import json
-import sys
-
-def autonomous_options(f):
-    import rich_click as click
-    f = click.option("--non-interactive", is_flag=True, help="Skip all prompts, use defaults")(f)
-    f = click.option("--output", type=click.Choice(["text", "json"]), default="text", help="Return machine-parseable JSON")(f)
-    f = click.option("--yes", is_flag=True, help="Auto-confirm all actions")(f)
-    return f
-
-def is_autonomous(non_interactive):
-    import os
-    return non_interactive or os.environ.get("HEZGENE_NON_INTERACTIVE") == "1"
-
-def print_json_and_exit(data, exit_code=0):
-    import json
-    import sys
-    print(json.dumps(data, indent=2))
-    sys.exit(exit_code)
 
 
     status = result.get("status", "unknown")
@@ -1579,138 +1491,7 @@ def _print_summary(results: list[dict], applied: bool = False, verbose: bool = F
     console.print()
 
 
-# ═══════════════════════════════════════════════════════════════════
-# Enterprise CLI Commands — License, CI/CD, UI
-# ═══════════════════════════════════════════════════════════════════
 
-
-@main.group(help="""
-Manage your HezGene Enterprise license.
-
-Activate, check status, or deactivate your license key.
-License keys are stored locally at ~/.hezgene/license.json.
-
-Example:
-  hezgene license activate HZG-XXXX-XXXX-XXXX
-  hezgene license status
-  hezgene license deactivate
-""")
-def license():
-    """Manage HezGene Enterprise license."""
-    pass
-
-
-@license.command(name="activate", help="Activate a license key.")
-@click.argument("key")
-@autonomous_options
-def license_activate(key, non_interactive, output, yes):
-    """Activate a HezGene Enterprise license key."""
-    try:
-        from hezgene_enterprise.team.license_manager import LicenseManager
-    except ImportError:
-        # Try local dev fallback
-        import sys
-        from pathlib import Path
-        ent_path = Path("enterprise/src")
-        if ent_path.exists() and str(ent_path) not in sys.path:
-            sys.path.insert(0, str(ent_path))
-        try:
-            from hezgene_enterprise.team.license_manager import LicenseManager
-        except ImportError:
-            console.print("[red]Enterprise package not installed. Install hezgene-enterprise first.[/]")
-            return
-
-    try:
-        lm = LicenseManager()
-        lic = lm.activate(key)
-
-        table = Table(border_style="green", show_header=False)
-        table.add_column("Key", style="bold cyan")
-        table.add_column("Value", style="white")
-        table.add_row("Plan", lic.plan_name)
-        table.add_row("Seats", str(lic.seats) if lic.seats > 0 else "Unlimited")
-        table.add_row("Expires", lic.expires[:10])
-        table.add_row("Days Remaining", str(lic.days_remaining))
-
-        for feat in ["llm_mutations", "web_dashboard", "ci_cd", "team_management"]:
-            label = feat.replace("_", " ").title()
-            status_str = "[green]✅ Active[/]" if lic.has_feature(feat) else "[dim]—[/]"
-            table.add_row(label, status_str)
-
-        console.print("\n[bold green]✅ License activated![/]")
-        console.print(table)
-    except ValueError as e:
-        console.print(f"[bold red]❌ {e}[/]")
-
-
-@license.command(name="status", help="Check license status.")
-@autonomous_options
-def license_status(non_interactive, output, yes):
-    """Show the current license status."""
-    try:
-        from hezgene_enterprise.team.license_manager import LicenseManager
-    except ImportError:
-        import sys
-        from pathlib import Path
-        ent_path = Path("enterprise/src")
-        if ent_path.exists() and str(ent_path) not in sys.path:
-            sys.path.insert(0, str(ent_path))
-        try:
-            from hezgene_enterprise.team.license_manager import LicenseManager
-        except ImportError:
-            console.print("[dim]No enterprise package installed. Using Community (Free) tier.[/]")
-            return
-
-    lm = LicenseManager()
-    lic = lm.get_license()
-
-    if not lic:
-        console.print("\n📊 [bold]License Status[/]")
-        console.print("   Plan: [cyan]Community (Free)[/]")
-        console.print("   [dim]Activate a license: hezgene license activate HZG-XXXX-XXXX-XXXX[/]")
-        console.print("   [dim]Get a license at: https://hezgene.ai/pricing[/]")
-        return
-
-    table = Table(title="📊 License Status", border_style="green", show_header=False)
-    table.add_column("Key", style="bold cyan")
-    table.add_column("Value", style="white")
-    table.add_row("Plan", lic.plan_name)
-    table.add_row("Seats", str(lic.seats) if lic.seats > 0 else "Unlimited")
-    table.add_row("Expires", lic.expires[:10])
-    table.add_row("Days Remaining", str(lic.days_remaining))
-
-    for feat in ["llm_mutations", "web_dashboard", "ci_cd", "team_management", "priority_support"]:
-        label = feat.replace("_", " ").title()
-        status_str = "[green]✅ Active[/]" if lic.has_feature(feat) else "[dim]—[/]"
-        table.add_row(label, status_str)
-
-    console.print()
-    console.print(table)
-
-
-@license.command(name="deactivate", help="Deactivate the current license.")
-@autonomous_options
-def license_deactivate(non_interactive, output, yes):
-    """Deactivate the current license."""
-    try:
-        from hezgene_enterprise.team.license_manager import LicenseManager
-    except ImportError:
-        import sys
-        from pathlib import Path
-        ent_path = Path("enterprise/src")
-        if ent_path.exists() and str(ent_path) not in sys.path:
-            sys.path.insert(0, str(ent_path))
-        try:
-            from hezgene_enterprise.team.license_manager import LicenseManager
-        except ImportError:
-            console.print("[dim]No enterprise package installed.[/]")
-            return
-
-    lm = LicenseManager()
-    if lm.deactivate():
-        console.print("[green]✅ License deactivated. You are now on the Community (Free) plan.[/]")
-    else:
-        console.print("[yellow]No active license to deactivate.[/]")
 
 
 @main.command(name="ci", help="""
@@ -1729,22 +1510,15 @@ Example:
 @click.option("--gitlab", "use_gitlab", is_flag=True, help="Set up GitLab CI")
 def ci(use_github, use_gitlab):
     """Set up CI/CD integration."""
-    engine = EvolutionEngine()
-    if not engine.has_enterprise:
-        from hezgene.core.exceptions import EnterpriseFeatureError
-        err = EnterpriseFeatureError("ci_cd")
-        console.print(err.rich_message())
-        return
-
     try:
         if use_github:
-            from hezgene_enterprise.ci_cd.github_actions import GitHubActionsIntegration
+            from hezgene.ci_cd.github_actions import GitHubActionsIntegration
             gh = GitHubActionsIntegration()
             path = gh.setup()
             console.print(f"[bold green]✅ GitHub Actions workflow created at {path}[/]")
             console.print("[dim]Add HEZGENE_LICENSE_KEY to your repository secrets.[/]")
         elif use_gitlab:
-            from hezgene_enterprise.ci_cd.gitlab_ci import GitLabCIIntegration
+            from hezgene.ci_cd.gitlab_ci import GitLabCIIntegration
             gl = GitLabCIIntegration()
             path = gl.setup()
             console.print(f"[bold green]✅ GitLab CI pipeline created at {path}[/]")

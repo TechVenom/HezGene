@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #f4f5f9;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f8f9fa;
+
+  --color-accent-green: #10b981;
+  --color-accent-cyan: #0ea5e9;
+  --color-accent-purple: #673ab7;
+  --color-accent-red: #ef4444;
+  --color-accent-yellow: #f59e0b;
+  --color-accent-pink: #ec4899;
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+
+  --color-border: #e5e7eb;
+
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+}
+
+@layer utilities {
+  /* Glow effects - toned down for light theme */
+  .glow-green {
+    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+  }
+  .glow-purple {
+    box-shadow: 0 4px 14px 0 rgba(103, 58, 183, 0.39);
+  }
+  .glow-cyan {
+    box-shadow: 0 4px 14px 0 rgba(14, 165, 233, 0.39);
+  }
+  .glow-yellow {
+    box-shadow: 0 4px 14px 0 rgba(245, 158, 11, 0.39);
+  }
+  .glow-red {
+    box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+  }
+
+  /* Glass effects */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(229, 231, 235, 0.5);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(229, 231, 235, 0.7);
+  }
+
+  /* Gradient text */
+  .gradient-green-cyan {
+    background: linear-gradient(135deg, #22c55e, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-purple-pink {
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-yellow-red {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Pulse animation for live indicators */
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Fade in up animation */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out forwards;
+  }
+
+  /* Scale in animation */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+  }
+
+  /* Trophy bounce */
+  @keyframes trophy-bounce {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-8px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-4px); }
+  }
+  .animate-trophy {
+    animation: trophy-bounce 1.5s ease-in-out infinite;
+  }
+
+  /* DNA helix spin */
+  @keyframes dna-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-dna-spin {
+    animation: dna-spin 3s linear infinite;
+  }
+
+  /* Ring progress */
+  @keyframes ring-fill {
+    from { stroke-dashoffset: 283; }
+  }
+  .animate-ring-fill {
+    animation: ring-fill 1s ease-out forwards;
+  }
+
+  /* Shimmer effect for loading */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(30, 41, 59, 0.4) 25%,
+      rgba(51, 65, 85, 0.4) 50%,
+      rgba(30, 41, 59, 0.4) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+}
