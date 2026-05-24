@@ -128,10 +128,10 @@ hezgene config --set llm.model default
 
 | Type | What | Notes |
 |------|------|-------|
-| Standalone functions | ✅ Evolved | Functions with >2 lines |
-| Class methods | ✅ Evolved | Dunder methods are skipped |
-| Very short functions | ❌ Skipped | “Too short to optimize” |
-| Imports / module-level statements | ❌ Skipped | Never modified directly |
+| Standalone functions | Evolved | Functions with >2 lines |
+| Class methods | Evolved | Dunder methods are skipped |
+| Very short functions | Skipped | “Too short to optimize” |
+| Imports / module-level statements | Skipped | Never modified directly |
 
 ## Safety Features
 
@@ -236,6 +236,32 @@ hezgene-demo                          # Terminal demo
 | `HEZGENE_SANDBOX_DIR` | Custom sandbox path | `.hezgene/sandbox/` |
 | `HEZGENE_MAX_GENERATIONS` | Mutants per cycle | `5` |
 | `HEZGENE_NON_INTERACTIVE` | Skip all prompts | `0` |
+
+## Publishing to PyPI (Maintainers)
+
+We publish via **GitHub Actions + PyPI Trusted Publishing** (OIDC). See [docs/releasing.md](docs/releasing.md).
+
+### TestPyPI
+
+```bash
+git tag vX.Y.Z-test
+git push origin vX.Y.Z-test
+```
+
+### PyPI
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+### Local build sanity check (optional)
+
+```bash
+python -m pip install -U build twine
+python -m build
+python -m twine check dist/*
+```
 
 ## Contributing
 
