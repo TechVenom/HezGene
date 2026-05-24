@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/TechVenom/HezGene.svg?style=flat)](https://github.com/TechVenom/HezGene)
 
-![HezGene Demo](hezgene-demo.gif)
+![HezGene Demo](https://raw.githubusercontent.com/TechVenom/HezGene/main/hezgene-demo.gif)
 
 *Watch a function evolve from 18 slow lines to 6 optimized lines in 30 seconds — 52% faster, 67% less code.*
 
