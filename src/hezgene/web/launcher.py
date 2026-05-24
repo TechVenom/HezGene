@@ -5,7 +5,7 @@ from rich.console import Console
 
 console = Console()
 
-def launch_dashboard():
+def launch_dashboard(host: str = "127.0.0.1", port: int = 8000):
     """Launch the HezGene Web Dashboard using the robust production server."""
     pkg_root = Path(__file__).parent.parent.parent.parent
     frontend_dir = pkg_root / "frontend"
@@ -24,7 +24,7 @@ def launch_dashboard():
             console.print(f"[bold red]Failed to build frontend: {e}[/]")
             return
 
-    console.print("[bold cyan]Starting robust HezGene Server on port 8000...[/]")
+    console.print(f"[bold cyan]Starting robust HezGene Server on port {port}...[/]")
     
     # Auto-restart loop to keep the web app alive if it crashes (OOM, unhandled exception, etc.)
     import time
@@ -36,7 +36,11 @@ def launch_dashboard():
             # We spawn it in a subprocess so we can catch crashes.
             # If we just called start_server(), a hard crash would kill this launcher too.
             process = subprocess.Popen(
-                [sys.executable, "-c", "from hezgene.web.api import start_server; start_server(host='127.0.0.1', port=8000)"],
+                [
+                    sys.executable,
+                    "-c",
+                    f"from hezgene.web.api import start_server; start_server(host={host!r}, port={int(port)})",
+                ],
                 env=os.environ
             )
             process.wait()

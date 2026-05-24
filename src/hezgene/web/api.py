@@ -26,12 +26,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from hezgene.analysis.file_ingestor import FileIngestor
-from hezgene.core.config import HezGeneConfig
-from hezgene.core.dna_tracker import DNATracker
-from hezgene.web.evolution_worker import run_evolution, run_project_evolution, sessions, project_evolution_state
-from hezgene.web.models import ConfigUpdate, EvolutionRequest, LLMTestRequest, GitHubConnectRequest, ProjectEvolveRequest
-from hezgene.project.project_manager import ProjectManager
-from hezgene.web.websocket import manager
+from ..core.config import HezGeneConfig
+from ..core.dna_tracker import DNATracker
+from .evolution_worker import project_evolution_state, run_evolution, run_project_evolution, sessions
+from .models import ConfigUpdate, EvolutionRequest, GitHubConnectRequest, LLMTestRequest, ProjectEvolveRequest
+from ..project.project_manager import ProjectManager
+from .websocket import manager
 
 # ── App Setup ──────────────────────────────────────────────────────
 app = FastAPI(
@@ -918,7 +918,7 @@ async def deploy_evolved_code(req: dict):
     winner = copy.deepcopy(dna)
     winner.source_code = evolved_source
 
-    from hezgene.deployment.deployer import AutoDeployer
+    from ..deployment.deployer import AutoDeployer
 
     deployer = AutoDeployer(PROJECT_ROOT)
     try:

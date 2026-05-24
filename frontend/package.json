@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:frontend": "vite --port 5173",
-    "dev:backend": "cd .. && set PYTHONPATH=src && python -m uvicorn hezgene_enterprise.web.api:app --host 127.0.0.1 --port 8000",
-    "dev:backend:watch": "cd .. && set PYTHONPATH=src && python -m uvicorn hezgene_enterprise.web.api:app --host 127.0.0.1 --port 8000 --reload --reload-dir src",
+    "dev:backend": "cd .. && set PYTHONPATH=src && python -m uvicorn hezgene.web.api:app --host 127.0.0.1 --port 8000",
+    "dev:backend:watch": "cd .. && set PYTHONPATH=src && python -m uvicorn hezgene.web.api:app --host 127.0.0.1 --port 8000 --reload --reload-dir src",
     "dev:all": "concurrently -k -n \"FRONTEND,BACKEND\" -c \"cyan,green\" \"npm run dev:frontend\" \"npm run dev:backend:watch\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

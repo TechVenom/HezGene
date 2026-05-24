@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from hezgene.core.dna_tracker import FunctionDNA
+from ..core.dna_tracker import FunctionDNA
 
 
 @dataclass

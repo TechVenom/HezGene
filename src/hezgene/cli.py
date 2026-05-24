@@ -88,8 +88,9 @@ def print_json_and_exit(data, exit_code=0):
     sys.exit(exit_code)
 
 
+from hezgene import __version__ as HEZGENE_VERSION
 from hezgene.analysis.file_ingestor import FileIngestor
-from hezgene.core.engine import EvolutionEngine
+from hezgene.engine import EvolutionEngine
 
 console = Console()
 
@@ -103,7 +104,7 @@ def _parse_target(target_args: tuple[str, ...]) -> str:
     return f"{target_args[0]}:{target_args[1]}"
 
 
-@click.version_option(version="1.0.0")
+@click.version_option(version=HEZGENE_VERSION)
 @click.group(help="""
 # 🧬 HezGene — The DNA of Software
 
@@ -163,6 +164,7 @@ def init(non_interactive, output, yes):
     hezgene_dir = Path(".hezgene")
     hezgene_dir.mkdir(exist_ok=True)
     (hezgene_dir / "dna_registry.json").write_text("{}", encoding="utf-8")
+    (hezgene_dir / "history.json").write_text("[]", encoding="utf-8")
     (hezgene_dir / "backups").mkdir(exist_ok=True)
 
     (hezgene_dir / "sandbox").mkdir(exist_ok=True)
@@ -199,8 +201,8 @@ def status(non_interactive, output, yes):
     from rich.table import Table
 
 
-    from hezgene.core.config import HezGeneConfig
-    from hezgene.core.dna_tracker import DNATracker
+    from .core.config import HezGeneConfig
+    from .core.dna_tracker import DNATracker
 
     hezgene_dir = Path(".hezgene")
     is_init = hezgene_dir.exists()
@@ -208,8 +210,6 @@ def status(non_interactive, output, yes):
     cfg = HezGeneConfig()
     provider_name = cfg.get_llm_provider_name()
     model_name = cfg.get("llm.model", "(default)")
-
-    tier = "Community (Free)"
 
     evolved_count = 0
     if is_init:
@@ -224,7 +224,6 @@ def status(non_interactive, output, yes):
     table.add_column("Value", style="white")
 
     table.add_row("Initialized", "[green]Yes[/]" if is_init else "[red]No (Run 'hezgene init')[/]")
-    table.add_row("Plan", tier)
     table.add_row("Evolved Functions", str(evolved_count))
     table.add_row("LLM Provider", provider_name)
     table.add_row("LLM Model", model_name)
@@ -302,11 +301,13 @@ you to manage code evolution, view the DNA explorer, and watch live battles.
 Example:
   hezgene web
 """)
+@click.option("--host", default="127.0.0.1", show_default=True, help="Host to bind the server")
+@click.option("--port", default=8000, show_default=True, type=int, help="Port to bind the server")
 @autonomous_options
-def web(non_interactive, output, yes):
+def web(host, port, non_interactive, output, yes):
     """Start the HezGene Web Interface."""
     from hezgene.web.launcher import launch_dashboard
-    launch_dashboard()
+    launch_dashboard(host=host, port=port)
 
 
 @main.command(help="""
@@ -603,18 +604,8 @@ def run(
         target_to_run = priority_target
 
     if evolve_all:
-        try:
-            results = engine.evolve_all(apply=apply)
-            _print_summary(results, apply, verbose)
-        except Exception as e:
-            if "EnterpriseFeatureError" in type(e).__name__ or "Enterprise" in str(e):
-                from hezgene.core.exceptions import EnterpriseFeatureError
-                if isinstance(e, EnterpriseFeatureError):
-                    console.print(e.rich_message())
-                else:
-                    console.print(f"[red]🔒 {e}[/]")
-            else:
-                raise
+        results = engine.evolve_all(apply=apply)
+        _print_summary(results, apply, verbose)
     elif target_to_run:
         # Show file analysis first
         from pathlib import Path
@@ -625,7 +616,7 @@ def run(
 
 
         try:
-            result = engine.evolve(target_to_run, generations=generations, apply=apply)
+            result = engine.evolve(target_to_run, generations=generations, apply=apply, use_llm=use_llm or llm_only)
             
             if output == "json":
                 results_list = result if isinstance(result, list) else [result]
@@ -674,15 +665,7 @@ def run(
         except Exception as e:
             if output == "json":
                 print_json_and_exit({"status": "error", "error": str(e)}, 1)
-
-            if "EnterpriseFeatureError" in type(e).__name__ or "Enterprise" in str(e):
-                from hezgene.core.exceptions import EnterpriseFeatureError
-                if isinstance(e, EnterpriseFeatureError):
-                    console.print(e.rich_message())
-                else:
-                    console.print(f"\n[red]🔒 {e}[/]")
-            else:
-                raise
+            raise
     else:
         console.print("[red]Specify a path (file/dir) or use --all / --target[/]")
 
@@ -710,7 +693,7 @@ def scan(target_args, non_interactive, output, yes):
     
     target_path = Path(path)
     if target_path.is_dir():
-        from hezgene.core.engine import EvolutionEngine
+        from hezgene.engine import EvolutionEngine
         engine = EvolutionEngine()
         targets = engine.scanner.scan_directory(target_path)
         
@@ -786,7 +769,7 @@ def dna(target_args, non_interactive, output, yes):
             console.print(f"[yellow]No evolvable functions found in {file_path}.[/]")
             return
 
-    from hezgene.core.dna_tracker import FunctionDNA
+    from .core.dna_tracker import FunctionDNA
     from hezgene.evaluation.gauntlet import FitnessGauntlet
 
     gauntlet = FitnessGauntlet()
@@ -1022,7 +1005,22 @@ def rollback(target_args, non_interactive, output, yes):
     if not target:
         console.print("[red]Please provide a target.[/]")
         return
-    console.print(f"[yellow]Rollback for {target} will be implemented in the next release.[/]")
+    file_path = target.split(":")[0]
+    try:
+        from .deployment.deployer import AutoDeployer
+
+        deployer = AutoDeployer(".")
+        res = deployer.rollback_latest(file_path)
+        if output == "json":
+            print_json_and_exit({"status": "success", "data": res}, 0)
+        console.print(
+            f"[bold green]✅ Rolled back[/] {file_path}\n"
+            f"[dim]Restored from:[/] {res.get('backup')}"
+        )
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"status": "error", "error": str(e)}, 1)
+        console.print(f"[bold red]❌ Rollback failed:[/] {e}")
 
 
 @main.command(help="""
@@ -1054,7 +1052,7 @@ Example:
 @autonomous_options
 def config(set_var, get_var, list_vars, non_interactive, output, yes):
     """Configure global HezGene settings."""
-    from hezgene.core.config import HezGeneConfig
+    from .core.config import HezGeneConfig
 
     cfg = HezGeneConfig()
 
@@ -1118,7 +1116,7 @@ Example:
 @autonomous_options
 def llm(status, list_models, test_prompt, provider, model, non_interactive, output, yes):
     """Manage LLM providers for intelligent mutations."""
-    from hezgene.core.config import HezGeneConfig
+    from .core.config import HezGeneConfig
     from hezgene.mutation.llm import get_provider, list_providers
 
     cfg = HezGeneConfig()
@@ -1516,13 +1514,11 @@ def ci(use_github, use_gitlab):
             gh = GitHubActionsIntegration()
             path = gh.setup()
             console.print(f"[bold green]✅ GitHub Actions workflow created at {path}[/]")
-            console.print("[dim]Add HEZGENE_LICENSE_KEY to your repository secrets.[/]")
         elif use_gitlab:
             from hezgene.ci_cd.gitlab_ci import GitLabCIIntegration
             gl = GitLabCIIntegration()
             path = gl.setup()
             console.print(f"[bold green]✅ GitLab CI pipeline created at {path}[/]")
-            console.print("[dim]Add HEZGENE_LICENSE_KEY to your CI/CD variables.[/]")
         else:
             console.print("[yellow]Specify --github or --gitlab[/]")
     except Exception as e:
@@ -1535,9 +1531,14 @@ Alias for 'hezgene web'. Launches the Battle Arena Web Dashboard.
 Example:
   hezgene ui
 """)
-def ui():
+@click.option("--host", default="127.0.0.1", show_default=True, help="Host to bind the server")
+@click.option("--port", default=8000, show_default=True, type=int, help="Port to bind the server")
+@autonomous_options
+def ui(host, port, non_interactive, output, yes):
     """Alias for the web dashboard."""
-    web.callback()
+    from hezgene.web.launcher import launch_dashboard
+
+    launch_dashboard(host=host, port=port)
 
 
 if __name__ == "__main__":

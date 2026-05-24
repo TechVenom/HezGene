@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 """
-HezGene Enterprise — GitLab CI Integration.
+HezGene — GitLab CI Integration.
 
 Generates GitLab CI pipeline configuration files that run HezGene
 evolution on merge requests.
@@ -22,12 +22,8 @@ hezgene-evolution:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - "**/*.py"
-  variables:
-    HEZGENE_LICENSE_KEY: $HEZGENE_LICENSE_KEY
   before_script:
     - pip install hezgene
-    - pip install hezgene-enterprise --index-url https://pkg.hezgene.ai/simple/
-    - hezgene license activate $HEZGENE_LICENSE_KEY
   script:
     - |
       git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA -- '*.py' | while read file; do

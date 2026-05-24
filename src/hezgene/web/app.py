@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from hezgene.core.dna_tracker import DNATracker
+from ..core.dna_tracker import DNATracker
 
 app = FastAPI(title="HezGene Web", description="Battle Arena UI")
 

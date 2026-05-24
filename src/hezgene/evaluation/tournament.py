@@ -7,7 +7,7 @@ which mutant (if any) deserves to replace the original.
 
 from __future__ import annotations
 
-from hezgene.core.dna_tracker import FunctionDNA
+from ..core.dna_tracker import FunctionDNA
 
 
 class TournamentManager:

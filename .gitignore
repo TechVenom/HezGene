@@ -16,6 +16,12 @@ ENV/
 htmlcov/
 .coverage
 
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
 # IDEs
 .vscode/
 .idea/

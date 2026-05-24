@@ -21,7 +21,7 @@ import copy
 import re
 import textwrap
 
-from hezgene.core.dna_tracker import DNATracker, FunctionDNA
+from ..core.dna_tracker import DNATracker, FunctionDNA
 from hezgene.mutation.ast_mutator import Mutant
 from hezgene.mutation.llm.base import LLMProvider
 from hezgene.mutation.llm.prompts import (

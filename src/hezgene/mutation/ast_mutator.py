@@ -18,7 +18,7 @@ import textwrap
 from dataclasses import dataclass, field
 from typing import Any
 
-from hezgene.core.dna_tracker import FunctionDNA
+from ..core.dna_tracker import FunctionDNA
 
 
 @dataclass
@@ -74,7 +74,7 @@ class MutationEngine:
                     mutant_dna = copy.deepcopy(dna)
                     mutant_dna.source_code = mutated
                     mutant_dna.source_hash = ""
-                    from hezgene.core.dna_tracker import DNATracker
+                    from ..core.dna_tracker import DNATracker
 
                     mutant_dna.lines_of_code = len(mutated.strip().splitlines())
                     mutant_dna.cyclomatic_complexity = DNATracker._calc_complexity(mutated)

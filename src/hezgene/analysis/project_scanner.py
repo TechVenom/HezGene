@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hezgene.analysis.file_ingestor import FileIngestor
-from hezgene.core.dna_tracker import DNATracker
+from ..core.dna_tracker import DNATracker
 
 
 class ProjectScanner:

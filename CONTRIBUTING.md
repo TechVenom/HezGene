@@ -64,7 +64,7 @@ src/hezgene/
 
 ## What Can You Contribute?
 
-### 🟢 Welcomed Contributions (Open Source Core)
+### 🟢 Welcomed Contributions
 
 - **New AST mutation strategies** — Add to `src/hezgene/mutation/ast_mutator.py`
 - **Fitness gauntlet improvements** — Better benchmarking and evaluation
@@ -78,19 +78,6 @@ src/hezgene/
 - **Major architectural changes** — Open an issue to discuss before starting
 - **New CLI commands** — Propose via issue so we can agree on UX
 - **Dependency additions** — We aim to keep the core lightweight
-
-### 🔴 Enterprise Features
-
-The following features are part of HezGene Enterprise and are maintained
-in a private repository:
-
-- LLM-powered mutations
-- Web Dashboard (Battle Arena)
-- CI/CD integrations
-- Team management and licensing
-
-If you're interested in contributing to enterprise features, please
-contact us at venomx.agent.future@proton.me.
 
 ## Commit Convention
 
@@ -110,4 +97,4 @@ software evolve. 🧬
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the **Business Source License 1.1** as defined in the `LICENSE` file. All contributions will automatically convert to the MIT License on the Change Date (May 22, 2030).
+By contributing, you agree that your contributions will be licensed under the MIT License, the same as the rest of the project.

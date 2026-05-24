@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from hezgene.core.dna_tracker import FunctionDNA
+from ..core.dna_tracker import FunctionDNA
 
 
 class DeploymentError(Exception):
@@ -109,6 +109,34 @@ class AutoDeployer:
             self._rollback(file_path, backup)
             raise DeploymentError(f"Deployment failed, rolled back: {e}") from e
 
+    def rollback_latest(self, file_path_str: str) -> dict[str, Any]:
+        """
+        Restore the most recent backup for a given file.
+
+        Args:
+            file_path_str: Path to the file (relative to project root or absolute).
+        """
+        file_path = Path(file_path_str)
+        if not file_path.is_absolute():
+            file_path = self.project_root / file_path
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        self.backup_path.mkdir(parents=True, exist_ok=True)
+        prefix = self._backup_prefix(file_path)
+        candidates = sorted(self.backup_path.glob(f"{prefix}.*{file_path.suffix}"), key=lambda p: p.stat().st_mtime)
+        if not candidates:
+            raise FileNotFoundError(f"No backups found for {file_path}")
+
+        backup = candidates[-1]
+        shutil.copy2(backup, file_path)
+        return {
+            "status": "rolled_back",
+            "file": str(file_path),
+            "backup": str(backup),
+            "timestamp": time.time(),
+        }
+
     def _find_function(self, tree: ast.Module, entity_name: str) -> ast.AST | None:
         """Find a function/method node by entity name."""
         # Handle "ClassName.method_name"
@@ -132,9 +160,25 @@ class AutoDeployer:
         """Create a timestamped backup of the file."""
         self.backup_path.mkdir(parents=True, exist_ok=True)
         ts = int(time.time())
-        backup = self.backup_path / f"{file_path.stem}_{ts}{file_path.suffix}"
+        prefix = self._backup_prefix(file_path)
+        backup = self.backup_path / f"{prefix}.{ts}{file_path.suffix}"
         shutil.copy2(file_path, backup)
         return backup
+
+    def _backup_prefix(self, file_path: Path) -> str:
+        """
+        Build a collision-resistant backup filename prefix for a file path.
+
+        We include the relative path (when possible) so two files with the same stem
+        do not overwrite each other's backups.
+        """
+        try:
+            rel = file_path.relative_to(self.project_root)
+        except Exception:
+            rel = file_path.name
+        safe = str(rel).replace("\\", "/")
+        safe = safe.replace("/", "__").replace(":", "_").replace(".", "_")
+        return safe
 
     @staticmethod
     def _rollback(file_path: Path, backup: Path) -> None:

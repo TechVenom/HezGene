@@ -1,5 +1,5 @@
 """
-🧬 HezGene Enterprise — Project Manager
+🧬 HezGene — Project Manager
 
 Handles full project ingestion from zip files, local folders, and GitHub
 repositories. Builds hierarchical project trees with per-file AST analysis

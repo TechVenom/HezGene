@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 """
-HezGene Enterprise — GitHub Actions Integration.
+HezGene — GitHub Actions Integration.
 
 Generates GitHub Actions workflow files that run HezGene evolution
 on every pull request, posting results as PR comments.
@@ -39,12 +39,6 @@ jobs:
       - name: Install HezGene
         run: |
           pip install hezgene
-          pip install hezgene-enterprise --index-url https://pkg.hezgene.ai/simple/
-
-      - name: Activate License
-        env:
-          HEZGENE_LICENSE_KEY: ${{ secrets.HEZGENE_LICENSE_KEY }}
-        run: hezgene license activate $HEZGENE_LICENSE_KEY
 
       - name: Run Evolution on Changed Files
         run: |

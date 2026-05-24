@@ -6,16 +6,24 @@ Every function has genes. We make them evolve.
 — Hezron Paipai
 """
 
-__version__ = "0.1.0"
-__author__ = "Hezron Paipai"
+try:
+    # Prefer the installed package metadata when available.
+    from importlib.metadata import PackageNotFoundError, version
 
-from hezgene.analysis.file_ingestor import FileIngestor
-from hezgene.analysis.project_scanner import ProjectScanner
-from hezgene.core.dna_tracker import DNATracker, FunctionDNA
-from hezgene.deployment.deployer import AutoDeployer
-from hezgene.evaluation.gauntlet import FitnessGauntlet
-from hezgene.evaluation.tournament import TournamentManager
-from hezgene.mutation.ast_mutator import MutationEngine
+    __version__ = version("hezgene")
+except Exception:
+    # Fallback for source checkouts / environments without metadata.
+    __version__ = "1.0.0"
+__author__ = "Hezron Paipai"
+__license__ = "MIT"
+
+from .analysis.file_ingestor import FileIngestor
+from .analysis.project_scanner import ProjectScanner
+from .core.dna_tracker import DNATracker, FunctionDNA
+from .deployment.deployer import AutoDeployer
+from .evaluation.gauntlet import FitnessGauntlet
+from .evaluation.tournament import TournamentManager
+from .mutation.ast_mutator import MutationEngine
 
 __all__ = [
     "EvolutionEngine",
@@ -30,4 +38,4 @@ __all__ = [
 ]
 
 
-from hezgene.core.engine import EvolutionEngine
+from .engine import EvolutionEngine

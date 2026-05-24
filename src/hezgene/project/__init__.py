@@ -1,1 +1,1 @@
-# HezGene Enterprise — Project Management Module
+# HezGene — Project Management Module

@@ -18,12 +18,12 @@ from pathlib import Path
 from typing import Any
 
 from hezgene.analysis.file_ingestor import FileIngestor
-from hezgene.core.dna_tracker import DNATracker
-from hezgene.deployment.deployer import AutoDeployer
-from hezgene.evaluation.gauntlet import FitnessGauntlet
-from hezgene.evaluation.tournament import TournamentManager
-from hezgene.mutation.ast_mutator import MutationEngine
-from hezgene.web.websocket import manager
+from ..core.dna_tracker import DNATracker
+from ..deployment.deployer import AutoDeployer
+from ..evaluation.gauntlet import FitnessGauntlet
+from ..evaluation.tournament import TournamentManager
+from ..mutation.ast_mutator import MutationEngine
+from .websocket import manager
 
 # In-memory session store
 sessions: dict[str, dict[str, Any]] = {}
@@ -209,7 +209,7 @@ async def run_evolution(
             llm_mutants = []
             if use_llm:
                 try:
-                    from hezgene.core.config import HezGeneConfig
+                    from ..core.config import HezGeneConfig
                     from hezgene.mutation.llm import get_provider
                     from hezgene.mutation.llm_mutator import LLMMutator
 
@@ -603,7 +603,7 @@ async def run_project_evolution(
                 
                 if use_llm:
                     try:
-                        from hezgene.core.config import HezGeneConfig
+                        from ..core.config import HezGeneConfig
                         from hezgene.mutation.llm import get_provider
                         from hezgene.mutation.llm_mutator import LLMMutator
 

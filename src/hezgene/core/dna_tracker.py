@@ -124,24 +124,126 @@ class DNATracker:
     """Manages the genetic registry for all tracked functions."""
 
     REGISTRY_FILE = ".hezgene/dna_registry.json"
+    HISTORY_FILE = ".hezgene/history.json"
 
     def __init__(self, project_root: str = "."):
         self.project_root = Path(project_root)
         self.registry_path = self.project_root / self.REGISTRY_FILE
+        self.history_path = self.project_root / self.HISTORY_FILE
         self._registry: dict[str, FunctionDNA] = {}
         self._dep_calls = None
         self._dep_called_by = None
         self._load()
+        self._ensure_history_file()
 
     def _load(self) -> None:
-        if self.registry_path.exists():
-            raw = json.loads(self.registry_path.read_text(encoding="utf-8"))
-            self._registry = {k: FunctionDNA.from_dict(v) for k, v in raw.items()}
+        """
+        Load the DNA registry from disk.
+
+        Robustness requirements:
+        - Missing file -> treat as empty registry
+        - Empty file -> auto-repair to {}
+        - Invalid JSON -> back up the corrupt file and reset to {}
+        """
+        if not self.registry_path.exists():
+            self._registry = {}
+            self._save()
+            return
+
+        try:
+            text = self.registry_path.read_text(encoding="utf-8")
+        except OSError:
+            return
+
+        # Empty / whitespace-only file => treat as empty registry and repair on disk
+        if not text.strip():
+            self._registry = {}
+            self._save()
+            return
+
+        try:
+            raw = json.loads(text)
+            if not isinstance(raw, dict):
+                raise ValueError("Registry JSON root must be an object")
+        except Exception:
+            # Back up the corrupt file then reset.
+            self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+            ts = int(time.time())
+            backup_path = self.registry_path.with_name(
+                f"{self.registry_path.stem}.corrupt.{ts}{self.registry_path.suffix}"
+            )
+            try:
+                self.registry_path.replace(backup_path)
+            except Exception:
+                # If we can't rename it, we still want to recover.
+                pass
+            self._registry = {}
+            self._save()
+            return
+
+        # Load registry entries defensively (ignore non-dict values)
+        self._registry = {
+            k: FunctionDNA.from_dict(v) for k, v in raw.items() if isinstance(v, dict)
+        }
 
     def _save(self) -> None:
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
         raw = {k: v.to_dict() for k, v in self._registry.items()}
         self.registry_path.write_text(json.dumps(raw, indent=2, default=str), encoding="utf-8")
+
+    def _ensure_history_file(self) -> None:
+        """
+        Ensure the evolution history file exists and is valid JSON.
+
+        - Missing file -> create []
+        - Empty file -> repair to []
+        - Invalid JSON -> back up corrupt file and reset to []
+        """
+        try:
+            self.history_path.parent.mkdir(parents=True, exist_ok=True)
+            if not self.history_path.exists():
+                self.history_path.write_text("[]", encoding="utf-8")
+                return
+
+            try:
+                text = self.history_path.read_text(encoding="utf-8")
+            except OSError:
+                return
+
+            if not text.strip():
+                self.history_path.write_text("[]", encoding="utf-8")
+                return
+
+            try:
+                raw = json.loads(text)
+                if not isinstance(raw, list):
+                    raise ValueError("History JSON root must be a list")
+            except Exception:
+                ts = int(time.time())
+                backup_path = self.history_path.with_name(
+                    f"{self.history_path.stem}.corrupt.{ts}{self.history_path.suffix}"
+                )
+                try:
+                    self.history_path.replace(backup_path)
+                except Exception:
+                    pass
+                self.history_path.write_text("[]", encoding="utf-8")
+        except Exception:
+            # History is best-effort; never crash tracker initialization.
+            return
+
+    def _append_history(self, entry: dict[str, Any]) -> None:
+        """Append a single evolution event to the history file (best-effort)."""
+        try:
+            self._ensure_history_file()
+            text = self.history_path.read_text(encoding="utf-8")
+            raw = json.loads(text) if text.strip() else []
+            if not isinstance(raw, list):
+                raw = []
+            raw.append(entry)
+            self.history_path.write_text(json.dumps(raw, indent=2, default=str), encoding="utf-8")
+        except Exception:
+            return
 
     def extract(self, target: str, override_source: str | None = None) -> FunctionDNA:
         """Extract or refresh DNA for a target function. Format: 'file.py:func' or 'file.py:Class.func'"""  # noqa: E501
@@ -233,6 +335,15 @@ class DNATracker:
         new.last_evolved_at = time.time()
         self._registry[target] = new
         self._save()
+        self._append_history(
+            {
+                "timestamp": time.time(),
+                "target": target,
+                "fitness_before": old.fitness_score,
+                "fitness_after": new.fitness_score,
+                "evolutions": new.evolution_count,
+            }
+        )
 
     def get_all_tracked(self) -> list[str]:
         return [k for k, v in self._registry.items() if not v.frozen]
