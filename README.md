@@ -1,10 +1,9 @@
 # 🧬 HezGene — The DNA of Software
 
 <!-- Badge Bar -->
-[![PyPI](https://img.shields.io/pypi/v/hezgene.svg)](https://pypi.org/project/hezgene/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/hezgene.svg)](https://pypi.org/project/hezgene/)
+[![PyPI](https://img.shields.io/pypi/v/hezgene.svg?cacheSeconds=3600)](https://pypi.org/project/hezgene/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/hezgene.svg?cacheSeconds=3600)](https://pypi.org/project/hezgene/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Downloads](https://img.shields.io/pypi/dm/hezgene.svg)](https://pypi.org/project/hezgene/)
 [![Stars](https://img.shields.io/github/stars/TechVenom/HezGene.svg?style=flat)](https://github.com/TechVenom/HezGene)
 
 ![HezGene Demo](hezgene-demo.gif)
