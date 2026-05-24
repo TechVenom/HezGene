@@ -285,4 +285,4 @@ Email: venomx.agent.future@proton.me
 
 ## Star History
 
-[![Star History Chart](https://star-history.com)](https://star-history.com/#TechVenom/HezGene&Date)
+[![Star History Chart](https://api.star-history.com/chart?repos=TechVenom/HezGene&type=date&legend=top-left)](https://www.star-history.com/?type=date&repos=TechVenom%2FHezGene)
