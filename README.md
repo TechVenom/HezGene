@@ -82,11 +82,11 @@ Here is HezGene in action, showcasing the autonomous mutation and optimization p
 
 ### 1. Extracting Function DNA & AST Mutation
 Analyzing functions, calculating fitness baselines, and generating AST-level mutants:
-![DNA Extraction & Mutation Strategy](hezgene-1.png)
+![DNA Extraction & Mutation Strategy](https://raw.githubusercontent.com/TechVenom/HezGene/main/hezgene-1.png)
 
 ### 2. The 5-Ring Fitness Arena & Selection
 Running concurrent test gauntlets and evaluating mutant performance to declare a winner:
-![Mutant Battle & Gauntlet Run](hezgene-2.png)
+![Mutant Battle & Gauntlet Run](https://raw.githubusercontent.com/TechVenom/HezGene/main/hezgene-2.png)
 
 ## Core Workflow (5 Steps)
 
