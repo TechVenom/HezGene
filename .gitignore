@@ -25,3 +25,10 @@ dist/
 # IDEs
 .vscode/
 .idea/
+
+# Local / temporary files
+jobs.json
+logs.txt
+pypi.json
+runs.json
+*.log
