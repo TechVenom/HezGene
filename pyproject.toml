@@ -52,7 +52,7 @@ hezgene-demo = "hezgene.demo:main"
 
 [project.urls]
 Homepage = "https://github.com/TechVenom/HezGene"
-Documentation = "https://github.com/TechVenom/HezGene/tree/main/docs"
+Documentation = "https://hezgene.vercel.app/docs/introduction"
 Repository = "https://github.com/TechVenom/HezGene.git"
 Issues = "https://github.com/TechVenom/HezGene/issues"
 
