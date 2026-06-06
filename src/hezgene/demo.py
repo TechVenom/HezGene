@@ -255,9 +255,42 @@ def main():
     time.sleep(1.5)
     
     # ═══════════════════════════════════════════════════════════
-    # STEP 8: Final Summary
+    # STEP 9: Codebase Intelligence Auto-Fix
     # ═══════════════════════════════════════════════════════════
-    console.print("[bold yellow]🎉 STEP 8: Deployment Complete[/bold yellow]")
+    console.print("[bold yellow]🧹 STEP 9: Codebase Intelligence[/bold yellow]")
+    console.print("[dim]HezGene also scans your entire project to auto-fix rot and bloat.[/dim]")
+    console.print()
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Running master audit: hezgene audit --apply...", total=None)
+        time.sleep(2.5)
+        progress.update(task, completed=True)
+    
+    console.print()
+    audit_panel = Panel.fit(
+        "[bold cyan]📋 Master Project Audit (Auto-Fixed)[/bold cyan]\n\n"
+        "[bold red]📦 Dependencies:[/bold red] Found 2 unused (requests, colorama)\n"
+        "  [bold green]⚡ Fixed:[/bold green] Removed 2 unused dependencies from requirements.txt\n\n"
+        "[bold red]🔎 Dead Code:[/bold red] Found 4 unreachable entities\n"
+        "  [bold green]⚡ Fixed:[/bold green] Deleted 4 unreachable functions safely\n\n"
+        "[bold yellow]👯 Duplication:[/bold yellow] Found 2 identical builder classes\n"
+        "  [bold yellow]⚠️ Action:[/bold yellow] Marked for developer review\n\n"
+        "[bold green]✅ Audit Passed Perfectly![/bold green]",
+        border_style="cyan",
+        padding=(1, 2)
+    )
+    console.print(audit_panel)
+    console.print()
+    time.sleep(2)
+
+    # ═══════════════════════════════════════════════════════════
+    # FINAL SUMMARY
+    # ═══════════════════════════════════════════════════════════
+    console.print("[bold yellow]🎉 STEP 10: Deployment Complete[/bold yellow]")
     console.print()
     
     summary = Table(title="📊 Evolution Summary", box=box.ROUNDED)
@@ -277,7 +310,7 @@ def main():
         "[bold bright_cyan]🧬 HezGene — Code That Evolves Itself[/bold bright_cyan]\n\n"
         "[bold]pip install hezgene[/bold]\n"
         "[bold]hezgene init[/bold]\n"
-        "[bold]hezgene run src/[/bold]\n\n"
+        "[bold]hezgene audit --apply[/bold]\n\n"
         "[dim]github.com/TechVenom/HezGene[/dim]\n"
         "[dim]MIT License — Free Forever[/dim]",
         border_style="bright_cyan",
