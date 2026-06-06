@@ -27,107 +27,106 @@ CRITICAL RULES:
 10. VERIFY your own output before returning: mentally run example inputs and ensure the expected outputs match the original EXACTLY."""
 
 
-# ── Mutation Strategy Prompts ──────────────────────────────────
+# ── Mutation Strategy Configs ──────────────────────────────────
+# Each strategy is defined by its focus text and technique list.
+# A single builder function generates the prompt from this config,
+# eliminating the structural duplication detected by hezgene dupes.
 
+STRATEGY_CONFIGS = {
+    "llm_speed": {
+        "focus": "Optimize this Python function for SPEED. Make it execute faster while keeping identical behavior.",
+        "techniques": [
+            "Replace loops with list comprehensions or generator expressions",
+            "Use built-in functions (sum, min, max, map, filter) instead of manual loops",
+            "Add early returns for common cases",
+            "Reduce unnecessary allocations",
+            "Use local variable lookups instead of repeated attribute access",
+        ],
+    },
+    "llm_memory": {
+        "focus": "Optimize this Python function for MEMORY EFFICIENCY. Reduce allocations while keeping identical behavior.",
+        "techniques": [
+            "Use generators instead of lists where possible",
+            "Avoid creating intermediate data structures",
+            "Use in-place operations",
+            "Remove unused variables",
+            "Use itertools for memory-efficient iteration",
+        ],
+    },
+    "llm_simplify": {
+        "focus": "Simplify this Python function. Make it shorter and more readable while keeping identical behavior.",
+        "techniques": [
+            "Flatten nested conditionals with guard clauses",
+            "Use ternary expressions for simple if/else",
+            "Remove dead code and unnecessary variables",
+            "Combine related operations",
+            "Use Pythonic idioms (enumerate, zip, unpacking)",
+        ],
+    },
+    "llm_algorithm": {
+        "focus": "Improve the ALGORITHM of this Python function. Find a better algorithmic approach while keeping identical behavior.",
+        "techniques": [
+            "Reduce time complexity (O(n²) → O(n log n) or O(n))",
+            "Use appropriate data structures (set for lookups, dict for mapping)",
+            "Add memoization for recursive functions",
+            "Use divide-and-conquer or dynamic programming",
+            "Eliminate redundant computations",
+        ],
+    },
+    "llm_robust": {
+        "focus": "Make this Python function MORE ROBUST. Add defensive coding while keeping identical behavior for valid inputs.",
+        "techniques": [
+            "Add early returns for edge cases (empty input, None, zero)",
+            "Add type checking for critical parameters",
+            "Use .get() for dict access instead of direct key access",
+            "Handle potential exceptions gracefully",
+            "Add bounds checking for sequences",
+        ],
+    },
+}
+
+
+def _build_strategy_prompt(strategy_key: str, source: str, dna_context: str) -> str:
+    """Build a mutation prompt from a strategy config. Single implementation for all strategies."""
+    config = STRATEGY_CONFIGS[strategy_key]
+    techniques = "\n".join(f"- {t}" for t in config["techniques"])
+    return f"""{config['focus']}
+
+Techniques to consider:
+{techniques}
+
+FUNCTION DNA (context):
+{dna_context}
+
+ORIGINAL FUNCTION:
+{source}
+
+Output ONLY the improved function. No explanation."""
+
+
+# ── Public API (backward-compatible wrappers) ─────────────────
+# These thin wrappers preserve the original call signature so that
+# existing code calling build_optimize_speed_prompt(source, ctx) still works.
 
 def build_optimize_speed_prompt(source: str, dna_context: str) -> str:
     """Prompt: Make the function faster."""
-    return f"""Optimize this Python function for SPEED. Make it execute faster while keeping identical behavior.
-
-Techniques to consider:
-- Replace loops with list comprehensions or generator expressions
-- Use built-in functions (sum, min, max, map, filter) instead of manual loops
-- Add early returns for common cases
-- Reduce unnecessary allocations
-- Use local variable lookups instead of repeated attribute access
-
-FUNCTION DNA (context):
-{dna_context}
-
-ORIGINAL FUNCTION:
-{source}
-
-Output ONLY the improved function. No explanation."""
-
+    return _build_strategy_prompt("llm_speed", source, dna_context)
 
 def build_optimize_memory_prompt(source: str, dna_context: str) -> str:
     """Prompt: Reduce memory usage."""
-    return f"""Optimize this Python function for MEMORY EFFICIENCY. Reduce allocations while keeping identical behavior.
-
-Techniques to consider:
-- Use generators instead of lists where possible
-- Avoid creating intermediate data structures
-- Use in-place operations
-- Remove unused variables
-- Use itertools for memory-efficient iteration
-
-FUNCTION DNA (context):
-{dna_context}
-
-ORIGINAL FUNCTION:
-{source}
-
-Output ONLY the improved function. No explanation."""
-
+    return _build_strategy_prompt("llm_memory", source, dna_context)
 
 def build_simplify_prompt(source: str, dna_context: str) -> str:
     """Prompt: Simplify and clean up the code."""
-    return f"""Simplify this Python function. Make it shorter and more readable while keeping identical behavior.
-
-Techniques to consider:
-- Flatten nested conditionals with guard clauses
-- Use ternary expressions for simple if/else
-- Remove dead code and unnecessary variables
-- Combine related operations
-- Use Pythonic idioms (enumerate, zip, unpacking)
-
-FUNCTION DNA (context):
-{dna_context}
-
-ORIGINAL FUNCTION:
-{source}
-
-Output ONLY the improved function. No explanation."""
-
+    return _build_strategy_prompt("llm_simplify", source, dna_context)
 
 def build_algorithmic_prompt(source: str, dna_context: str) -> str:
     """Prompt: Improve the algorithm itself."""
-    return f"""Improve the ALGORITHM of this Python function. Find a better algorithmic approach while keeping identical behavior.
-
-Techniques to consider:
-- Reduce time complexity (O(n²) → O(n log n) or O(n))
-- Use appropriate data structures (set for lookups, dict for mapping)
-- Add memoization for recursive functions
-- Use divide-and-conquer or dynamic programming
-- Eliminate redundant computations
-
-FUNCTION DNA (context):
-{dna_context}
-
-ORIGINAL FUNCTION:
-{source}
-
-Output ONLY the improved function. No explanation."""
-
+    return _build_strategy_prompt("llm_algorithm", source, dna_context)
 
 def build_robust_prompt(source: str, dna_context: str) -> str:
     """Prompt: Make the function more robust."""
-    return f"""Make this Python function MORE ROBUST. Add defensive coding while keeping identical behavior for valid inputs.
-
-Techniques to consider:
-- Add early returns for edge cases (empty input, None, zero)
-- Add type checking for critical parameters
-- Use .get() for dict access instead of direct key access
-- Handle potential exceptions gracefully
-- Add bounds checking for sequences
-
-FUNCTION DNA (context):
-{dna_context}
-
-ORIGINAL FUNCTION:
-{source}
-
-Output ONLY the improved function. No explanation."""
+    return _build_strategy_prompt("llm_robust", source, dna_context)
 
 
 # ── DNA Context Builder ───────────────────────────────────────

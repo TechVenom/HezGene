@@ -35,6 +35,10 @@ DEFAULT_CONFIG = {
         "max_backups": 50,
         "verify_after_deploy": True,
     },
+    "boundaries": {
+        "zones": [],
+        "rules": []
+    }
 }
 
 

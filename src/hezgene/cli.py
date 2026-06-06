@@ -1492,6 +1492,487 @@ def _print_summary(results: list[dict], applied: bool = False, verbose: bool = F
 
 
 
+@main.command(name="dead-code", help="""
+Scan the project for dead code (unused functions and classes) using graph reachability.
+
+Example:
+  hezgene dead-code
+  hezgene dead-code --apply
+""")
+@click.option("--apply", is_flag=True, help="Automatically delete the dead code from source files")
+@autonomous_options
+def dead_code(apply, non_interactive, output, yes):
+    """Scan the project for dead code."""
+    from hezgene.analysis.dead_code import DeadCodeScanner
+    
+    console.print(Rule("[bold yellow]🔎 Scanning for Dead Code[/]"))
+    try:
+        scanner = DeadCodeScanner()
+        findings = scanner.scan()
+        
+        if output == "json":
+            data = [
+                {
+                    "file": f.file_path,
+                    "line": f.line_number,
+                    "entity": f.entity_name,
+                    "reason": f.reason
+                }
+                for f in findings
+            ]
+            print_json_and_exit({"dead_code": data}, 0 if not findings else 1)
+            
+        if not findings:
+            console.print("[bold green]✅ No dead code found! Your codebase is lean.[/]")
+            return
+            
+        console.print(f"\n[bold red]Found {len(findings)} unused entities:[/]\n")
+        
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("File")
+        table.add_column("Line", justify="right")
+        table.add_column("Entity")
+        table.add_column("Reason")
+        
+        for f in findings:
+            table.add_row(f.file_path, str(f.line_number), f.entity_name, f.reason)
+            
+        console.print(table)
+        console.print("\n[dim]Note: Dynamically called code or framework entry points may be flagged as unused.[/]")
+        
+        if apply:
+            console.print("\n[bold yellow]⚡ Applying fixes (deleting dead code)...[/]")
+            deleted = scanner.apply_fixes(findings)
+            console.print(f"[bold green]✅ Successfully deleted {deleted} unused entities![/]")
+        else:
+            console.print("\n[dim]Run with [bold]--apply[/] to automatically delete these entities.[/]")
+            
+        sys.exit(1 if not apply else 0)
+        
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"error": str(e)}, 1)
+        console.print(f"[bold red]❌ Error scanning for dead code: {e}[/]")
+        sys.exit(1)
+
+
+@main.command(name="dupes", help="""
+Identify duplicated or structurally identical code.
+
+This command parses the AST of your functions, normalizes variables and constants,
+and detects functions that share the exact same structural topology.
+
+Example:
+  hezgene dupes
+""")
+@autonomous_options
+def dupes(non_interactive, output, yes):
+    """Identify duplicated code across the project."""
+    from hezgene.analysis.duplication import DuplicationScanner
+    
+    console.print(Rule("[bold yellow]👯 Scanning for Duplicated Code[/]"))
+    try:
+        scanner = DuplicationScanner()
+        findings = scanner.scan()
+        
+        if output == "json":
+            data = [
+                {
+                    "hash_id": g.hash_id,
+                    "count": len(g.functions),
+                    "functions": g.functions
+                }
+                for g in findings
+            ]
+            print_json_and_exit({"duplicates": data}, 0)
+            
+        if not findings:
+            console.print("[bold green]✅ No duplicated code found! Your abstractions are solid.[/]")
+            return
+
+        total_dupes = sum(len(g.functions) for g in findings)
+        console.print(f"\n[bold red]Found {len(findings)} duplicate families ({total_dupes} total functions):[/]\n")
+        
+        for group in findings:
+            console.print(f"  [bold cyan]Family {group.hash_id}[/] ({len(group.functions)} clones)")
+            table = Table(show_header=True, header_style="bold magenta", padding=(0, 2))
+            table.add_column("File")
+            table.add_column("Line", justify="right")
+            table.add_column("Function")
+            table.add_column("Lines of Code", justify="right")
+            
+            for f in group.functions:
+                table.add_row(f["file_path"], str(f["line"]), f["qualified_name"], str(f["loc"]))
+            
+            console.print(table)
+            console.print()
+            
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"error": str(e)}, 1)
+        console.print(f"[bold red]❌ Error scanning for duplicates: {e}[/]")
+        sys.exit(1)
+
+
+@main.command(name="boundaries", help="""
+Enforce architectural boundaries.
+
+This command checks if modules in your project violate the import rules
+defined in your .hezgene/config.json file.
+
+Example:
+  hezgene boundaries
+""")
+@autonomous_options
+def boundaries(non_interactive, output, yes):
+    """Enforce architectural boundary rules based on imports."""
+    from hezgene.analysis.boundaries import BoundaryScanner
+    from hezgene.core.config import HezGeneConfig
+    
+    console.print(Rule("[bold yellow]🧱 Scanning Architectural Boundaries[/]"))
+    
+    config = HezGeneConfig()
+    bounds = config.get("boundaries", {})
+    if not bounds.get("zones") or not bounds.get("rules"):
+        console.print("[dim]No boundary rules configured in .hezgene/config.json.[/]")
+        console.print("Add a 'boundaries' block to your config to enforce architecture rules.")
+        if output == "json":
+            print_json_and_exit({"boundaries": []}, 0)
+        return
+        
+    try:
+        scanner = BoundaryScanner(config=config)
+        violations = scanner.scan()
+        
+        if output == "json":
+            data = [
+                {
+                    "file": v.file_path,
+                    "line": v.line_number,
+                    "source_zone": v.source_zone,
+                    "target_zone": v.target_zone,
+                    "imported_module": v.imported_module
+                }
+                for v in violations
+            ]
+            print_json_and_exit({"violations": data}, 0 if not violations else 1)
+            
+        if not violations:
+            console.print("[bold green]✅ No boundary violations found! Your architecture is pristine.[/]")
+            return
+
+        console.print(f"\n[bold red]Found {len(violations)} boundary violations:[/]\n")
+        
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("File")
+        table.add_column("Line", justify="right")
+        table.add_column("Imported Module")
+        table.add_column("Violation")
+        
+        for v in violations:
+            violation_str = f"[red]{v.source_zone}[/] -> [red]{v.target_zone}[/]"
+            table.add_row(v.file_path, str(v.line_number), v.imported_module, violation_str)
+            
+        console.print(table)
+        sys.exit(1)
+        
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"error": str(e)}, 1)
+        console.print(f"[bold red]❌ Error scanning boundaries: {e}[/]")
+        sys.exit(1)
+
+
+@main.command(name="trace", context_settings={"ignore_unknown_options": True}, help="""
+Run a python script under the HezGene Runtime Tracer.
+
+This will monitor function execution and update the call_count in the
+FunctionDNA registry. This data is used to identify hot paths.
+
+Example:
+  hezgene trace my_script.py --arg1 --arg2
+""")
+@click.argument("script", required=True)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+def trace(script, args):
+    """Run a script under the HezGene tracer."""
+    import sys
+    from pathlib import Path
+    from hezgene.analysis.runtime_tracer import RuntimeTracer
+
+    script_path = Path(script)
+    if not script_path.exists():
+        console.print(f"[bold red]❌ Script not found: {script}[/]")
+        sys.exit(1)
+
+    console.print(Rule(f"[bold yellow]🔥 Tracing Hot Paths: {script}[/]"))
+    
+    # Initialize and start tracer
+    tracer = RuntimeTracer()
+    tracer.start()
+
+    # Rewrite sys.argv for the target script
+    sys.argv = [script] + list(args)
+
+    # Execute the script in the __main__ namespace
+    import runpy
+    try:
+        runpy.run_path(str(script_path), run_name="__main__")
+    except SystemExit as e:
+        # Stop tracing explicitly before exiting so we save the data
+        tracer.stop_and_save()
+        sys.exit(e.code)
+    except Exception as e:
+        tracer.stop_and_save()
+        console.print(f"\n[bold red]Script exited with error: {e}[/]")
+        sys.exit(1)
+        
+    # Normal exit will trigger atexit hook to save data, but we can do it explicitly
+    tracer.stop_and_save()
+
+
+@main.command(name="health", help="""
+Generate a Project Health Score and identify refactoring targets.
+
+This command aggregates complexity, maintainability, dead code, and duplication
+into a single 0-100 score, similar to Fallow.
+
+Example:
+  hezgene health
+""")
+@autonomous_options
+def health(non_interactive, output, yes):
+    """Generate a 0-100 Project Health Score."""
+    from hezgene.analysis.health_score import HealthScanner
+    
+    console.print(Rule("[bold yellow]🏥 Calculating Project Health Score[/]"))
+    try:
+        scanner = HealthScanner()
+        report = scanner.scan()
+        
+        if output == "json":
+            import dataclasses
+            print_json_and_exit(dataclasses.asdict(report), 0)
+            
+        color = "green" if report.score >= 80 else ("yellow" if report.score >= 60 else "red")
+        
+        console.print(f"\n  [bold]Overall Score:[/] [{color} bold]{report.score}/100[/] (Grade: {report.grade})")
+        console.print(f"  [dim]Functions Analyzed:[/] {report.total_functions}")
+        console.print(f"  [dim]Dead Code Entities:[/] {report.dead_code_count}")
+        console.print(f"  [dim]Duplicate Families:[/] {report.duplicate_groups}")
+        console.print(f"  [dim]Average Complexity:[/] {report.avg_complexity}")
+        console.print(f"  [dim]Avg Maintainability:[/] {report.avg_maintainability}\n")
+        
+        if report.refactor_targets:
+            console.print("[bold red]Top Refactoring Targets:[/]")
+            table = Table(show_header=True, header_style="bold magenta", padding=(0, 2))
+            table.add_column("Function")
+            table.add_column("Complexity", justify="right")
+            table.add_column("Maintainability", justify="right")
+            table.add_column("Reason")
+            
+            for t in report.refactor_targets:
+                table.add_row(t.qualified_name, str(t.complexity), f"{t.maintainability_index:.1f}", t.reason)
+            
+            console.print(table)
+            
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"error": str(e)}, 1)
+        console.print(f"[bold red]❌ Error calculating health score: {e}[/]")
+        sys.exit(1)
+
+
+@main.command(name="audit", help="""
+Unified Codebase Intelligence Audit.
+
+Runs a master suite of checks across your project (dead code, dependencies,
+duplication, boundaries, and health score). Optionally applies auto-fixes.
+
+Example:
+  hezgene audit
+  hezgene audit --apply
+  hezgene audit --no-dupes --only deps
+""")
+@click.option("--apply", is_flag=True, help="Automatically fix all fixable issues (dead code, unused deps)")
+@click.option("--min-score", default=70, type=int, help="Fail if health score is below this threshold")
+@click.option("--base", default=None, type=str, help="Base branch for git-aware health scoping")
+@click.option("--full-project", is_flag=True, help="Audit the entire project instead of scoping to changed files")
+@autonomous_options
+def audit(apply, min_score, base, full_project, non_interactive, output, yes):
+    """Unified master audit for codebase intelligence."""
+    from hezgene.analysis.health_score import HealthScanner
+    from hezgene.analysis.dead_code import DeadCodeScanner
+    from hezgene.analysis.dependency_hygiene import DependencyScanner
+    
+    console.print(Rule("[bold yellow]📋 Master Project Audit[/]"))
+    
+    issues_found = False
+    
+    # 1. Dependency Hygiene
+    try:
+        dep_scanner = DependencyScanner()
+        issues = dep_scanner.scan()
+        if issues:
+            issues_found = True
+            unused = sum(1 for i in issues if i.issue_type == "unused")
+            missing = sum(1 for i in issues if i.issue_type == "missing")
+            console.print(f"\n[bold red]📦 Dependencies:[/] Found {unused} unused, {missing} missing.")
+            for i in issues[:5]:
+                console.print(f"  - [cyan]{i.package_name}[/] ({i.issue_type})")
+            if len(issues) > 5: console.print(f"  ...and {len(issues)-5} more.")
+            
+            if apply and unused > 0:
+                deleted = dep_scanner.apply_fixes(issues)
+                console.print(f"  [bold green]⚡ Fixed:[/] Removed {deleted} unused dependencies.")
+        else:
+            console.print("[bold green]📦 Dependencies:[/] Perfect hygiene.")
+    except Exception as e:
+        console.print(f"[bold red]📦 Dependencies:[/] Error: {e}")
+
+    # 2. Dead Code
+    try:
+        dead_scanner = DeadCodeScanner()
+        dead_findings = dead_scanner.scan()
+        if dead_findings:
+            issues_found = True
+            console.print(f"\n[bold red]🔎 Dead Code:[/] Found {len(dead_findings)} unreachable entities.")
+            for f in dead_findings[:5]:
+                console.print(f"  - [cyan]{f.entity_name}[/] in {f.file_path}:{f.line_number}")
+            if len(dead_findings) > 5: console.print(f"  ...and {len(dead_findings)-5} more.")
+            
+            if apply:
+                deleted = dead_scanner.apply_fixes(dead_findings)
+                console.print(f"  [bold green]⚡ Fixed:[/] Deleted {deleted} unreachable entities.")
+        else:
+            console.print("[bold green]🔎 Dead Code:[/] Zero unreachable entities.")
+    except Exception as e:
+        console.print(f"[bold red]🔎 Dead Code:[/] Error: {e}")
+
+    # 3. Overall Health Score (Git-aware)
+    try:
+        changed_files = None
+        scope_label = "Full Project"
+        if not full_project:
+            try:
+                import git
+                repo = git.Repo(".", search_parent_directories=True)
+                if base is None:
+                    for c in ["main", "master", "develop"]:
+                        if c in [ref.name for ref in repo.refs]: base = c; break
+                if base and base in [ref.name for ref in repo.refs]:
+                    changed_files = list(set([d.a_path for d in repo.head.commit.diff(base) if d.a_path.endswith(".py")] + [d.b_path for d in repo.head.commit.diff(base) if d.b_path.endswith(".py")]))
+                    scope_label = f"PR Delta vs {base}"
+            except Exception: pass
+            
+        health_scanner = HealthScanner()
+        report = health_scanner.scan(changed_files=changed_files)
+        
+        console.print(f"\n[bold {'green' if report.score >= min_score else 'red'}]🏥 Health Score:[/] {report.score}/100 ({scope_label})")
+        
+        if report.score < min_score:
+            console.print(f"\n[bold red]❌ Audit Failed![/] Health below threshold ({min_score}).")
+            sys.exit(1)
+        elif issues_found and not apply:
+            console.print(f"\n[bold yellow]⚠️ Audit Passed with Warnings![/] Score is ok, but issues exist. Run with [bold]--apply[/] to fix them.")
+            sys.exit(0)
+        else:
+            console.print(f"\n[bold green]✅ Audit Passed Perfectly![/]")
+            sys.exit(0)
+            
+    except Exception as e:
+        console.print(f"[bold red]❌ Audit Error:[/] {e}")
+        sys.exit(1)
+
+@main.command(name="deps", help="""
+Analyze dependency hygiene.
+
+Scans the project for unused dependencies (listed in requirements but never imported)
+and missing dependencies (imported but not listed in requirements).
+
+Example:
+  hezgene deps
+  hezgene deps --apply
+""")
+@click.option("--apply", is_flag=True, help="Automatically remove unused dependencies from requirements.txt")
+@autonomous_options
+def deps(apply, non_interactive, output, yes):
+    """Scan the project for dependency hygiene issues."""
+    from hezgene.analysis.dependency_hygiene import DependencyScanner
+    
+    console.print(Rule("[bold yellow]📦 Scanning Dependency Hygiene[/]"))
+    try:
+        scanner = DependencyScanner()
+        issues = scanner.scan()
+        
+        if output == "json":
+            data = [
+                {
+                    "package": i.package_name,
+                    "type": i.issue_type,
+                    "reason": i.reason
+                }
+                for i in issues
+            ]
+            print_json_and_exit({"hygiene_issues": data}, 0 if not issues else 1)
+            
+        if not issues:
+            console.print("[bold green]✅ No dependency hygiene issues found! Your requirements are perfectly synced.[/]")
+            return
+
+        unused = sum(1 for i in issues if i.issue_type == "unused")
+        missing = sum(1 for i in issues if i.issue_type == "missing")
+        
+        console.print(f"\n[bold red]Found {len(issues)} dependency issues[/] ({unused} unused, {missing} missing):\n")
+        
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Package")
+        table.add_column("Issue")
+        table.add_column("Details")
+        
+        for i in issues:
+            issue_str = f"[yellow]{i.issue_type}[/]" if i.issue_type == "unused" else f"[red]{i.issue_type}[/]"
+            table.add_row(f"[bold]{i.package_name}[/]", issue_str, i.reason)
+            
+        console.print(table)
+        
+        if apply and unused > 0:
+            console.print("\n[bold yellow]⚡ Applying fixes (removing unused dependencies)...[/]")
+            deleted = scanner.apply_fixes(issues)
+            console.print(f"[bold green]✅ Successfully removed {deleted} unused dependencies from requirements.txt![/]")
+            if missing > 0:
+                console.print(f"[dim]Note: {missing} missing dependencies could not be auto-fixed. Please pip install them manually.[/]")
+        elif unused > 0:
+            console.print("\n[dim]Run with [bold]--apply[/] to automatically remove unused dependencies from requirements.txt.[/]")
+            
+        sys.exit(1 if not apply else 0)
+        
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"error": str(e)}, 1)
+        console.print(f"[bold red]❌ Error scanning dependencies: {e}[/]")
+        sys.exit(1)
+
+
+@main.command(name="mcp", help="""
+Start the HezGene Model Context Protocol (MCP) Server.
+
+This allows AI agents (like Claude, Cursor, Windsurf) to natively query
+the codebase intelligence using standard JSON-RPC over stdio.
+
+Example:
+  hezgene mcp
+""")
+def mcp():
+    """Start the HezGene MCP Server."""
+    from hezgene.mcp_server import MCPServer
+    
+    server = MCPServer()
+    # MCP servers must only output JSON-RPC to stdout.
+    # Any other print statements will break the protocol.
+    server.serve()
+
+
 @main.command(name="ci", help="""
 Set up CI/CD integration for automated code evolution.
 

@@ -106,10 +106,36 @@ hezgene run --target slowest          # Auto-find and evolve worst function
 hezgene run src/ --llm                # Include AI-powered mutations
 hezgene run src/utils.py --apply      # Deploy directly (not just sandbox)
 hezgene verify                        # Confirm evolved code matches original
-hezgene dna src/utils.py:func         # Show function DNA profile
-hezgene log                           # View evolution history
 hezgene freeze src/auth.py:verify     # Protect critical functions
+
+# Codebase Intelligence & CI/CD
+hezgene health                        # Project Health Score
+hezgene audit --apply                 # Unified master audit (auto-fixes dead code & deps)
+hezgene audit --min-score 80          # Git-Aware PR risk audit
+hezgene dead-code --apply             # Auto-delete unreachable code via graph traversal
+hezgene dupes                         # Detect code duplication families
+hezgene boundaries                    # Enforce architecture layers
+hezgene trace <script.py>             # Hook runtime execution to find hot paths
+hezgene deps --apply                  # Auto-delete unused pip dependencies
+hezgene mcp                           # Start MCP Server for AI Agents
 ```
+
+## 🤖 Agent Context & MCP Server
+
+HezGene natively integrates with AI coding agents (like **Claude Desktop**, **Cursor**, and **Windsurf**). Because HezGene understands the deep structure of your codebase, it exposes this to agents so they can make better, safer edits.
+
+Start the Model Context Protocol (MCP) server:
+
+```bash
+hezgene mcp
+```
+
+Once connected, your AI agents can natively query:
+- `hezgene_get_health`
+- `hezgene_get_dead_code`
+- `hezgene_get_dependencies`
+
+This gives your AI agents **deterministic repo truth**, allowing them to verify safe cleanups and understand PR risks natively without guessing.
 
 ## LLM Configuration
 
@@ -227,7 +253,18 @@ hezgene rollback <path>               # Undo last deployment for a file
 hezgene ui                            # Launch dashboard
 hezgene ui --port 8080                # Custom port
 
-# CI/CD
+# Codebase Intelligence & CI/CD
+hezgene health                        # View project health score
+hezgene audit --apply                 # Run master audit and auto-fix everything
+hezgene audit --min-score 80          # Fail PR if health drops (Git-aware)
+hezgene dead-code --apply             # Find and delete unused code (graph traversal)
+hezgene dupes                         # Find structural code clones
+hezgene boundaries                    # Enforce architecture bounds
+hezgene trace <script.py>             # Profile execution hot paths
+hezgene deps --apply                  # Check requirements and delete unused packages
+hezgene mcp                           # Start the Agent Context MCP Server
+
+# External CI Systems
 hezgene ci --github                   # Generate GitHub Actions
 hezgene ci --gitlab                   # Generate GitLab CI
 

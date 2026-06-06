@@ -221,25 +221,17 @@ async def evolve_project(req: ProjectEvolveRequest, background_tasks: Background
         "message": "Project evolution started. Connect to WebSocket for live updates.",
     }
 
-@app.post("/api/project/evolve/{session_id}/pause")
-async def pause_project_evolution(session_id: str):
+@app.post("/api/project/evolve/{session_id}/{action}")
+async def update_project_evolution_state(session_id: str, action: str):
+    """Consolidated handler for pause/resume/cancel actions."""
+    state_map = {"pause": "paused", "resume": "running", "cancel": "cancelled"}
+    if action not in state_map:
+        raise HTTPException(status_code=400, detail="Invalid action")
+        
     if session_id in project_evolution_state:
-        project_evolution_state[session_id] = "paused"
-        return {"status": "success", "message": "Paused"}
-    raise HTTPException(status_code=404, detail="Session not found")
-
-@app.post("/api/project/evolve/{session_id}/resume")
-async def resume_project_evolution(session_id: str):
-    if session_id in project_evolution_state:
-        project_evolution_state[session_id] = "running"
-        return {"status": "success", "message": "Resumed"}
-    raise HTTPException(status_code=404, detail="Session not found")
-
-@app.post("/api/project/evolve/{session_id}/cancel")
-async def cancel_project_evolution(session_id: str):
-    if session_id in project_evolution_state:
-        project_evolution_state[session_id] = "cancelled"
-        return {"status": "success", "message": "Cancelled"}
+        new_state = state_map[action]
+        project_evolution_state[session_id] = new_state
+        return {"status": "success", "message": new_state.capitalize()}
     raise HTTPException(status_code=404, detail="Session not found")
 
 
