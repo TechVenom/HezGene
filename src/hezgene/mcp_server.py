@@ -16,6 +16,7 @@ from hezgene.analysis.health_score import HealthScanner
 from hezgene.analysis.dead_code import DeadCodeScanner
 from hezgene.analysis.duplication import DuplicationScanner
 from hezgene.analysis.dependency_hygiene import DependencyScanner
+from hezgene.guard import HealthGuard
 
 
 class MCPServer:
@@ -46,6 +47,35 @@ class MCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "hezgene_guard_snapshot",
+                "description": "Save the current health score as a baseline. Call this BEFORE making code changes so the guard can detect regressions.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "hezgene_guard_check",
+                "description": "Compare the current health score against the stored baseline. Returns pass/fail status with delta. Call this AFTER making code changes to verify no regression.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "threshold": {
+                            "type": "integer",
+                            "description": "Maximum allowed score drop (default: 10)",
+                            "default": 10
+                        },
+                        "auto_revert": {
+                            "type": "boolean",
+                            "description": "If true, auto-revert HEAD commit on failure",
+                            "default": false
+                        }
+                    },
                     "required": []
                 }
             }
@@ -128,6 +158,27 @@ class MCPServer:
                     self._send_response({
                         "id": req_id,
                         "result": {"content": [{"type": "text", "text": content}], "isError": False}
+                    })
+                elif name == "hezgene_guard_snapshot":
+                    guard = HealthGuard(self.project_root)
+                    baseline = guard.snapshot()
+                    content = json.dumps({"status": "success", "baseline": baseline}, indent=2)
+                    self._send_response({
+                        "id": req_id,
+                        "result": {"content": [{"type": "text", "text": content}], "isError": False}
+                    })
+                elif name == "hezgene_guard_check":
+                    from dataclasses import asdict
+                    args = params.get("arguments", {})
+                    threshold = args.get("threshold", 10)
+                    auto_revert = args.get("auto_revert", False)
+                    guard = HealthGuard(self.project_root)
+                    result = guard.check(threshold=threshold, auto_revert=auto_revert)
+                    content = json.dumps(asdict(result), indent=2)
+                    is_error = result.status == "fail"
+                    self._send_response({
+                        "id": req_id,
+                        "result": {"content": [{"type": "text", "text": content}], "isError": is_error}
                     })
                 else:
                     self._send_response({

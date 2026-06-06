@@ -1804,11 +1804,22 @@ def audit(apply, min_score, base, full_project, non_interactive, output, yes):
     from hezgene.analysis.health_score import HealthScanner
     from hezgene.analysis.dead_code import DeadCodeScanner
     from hezgene.analysis.dependency_hygiene import DependencyScanner
+    import dataclasses
     
-    console.print(Rule("[bold yellow]📋 Master Project Audit[/]"))
-    
+    # ── Collect all audit data into a structured dict ──────────────
+    audit_data = {
+        "status": "pass",
+        "health_score": 0,
+        "health_grade": "?",
+        "min_score_threshold": min_score,
+        "scope": "Full Project",
+        "dependencies": {"unused": 0, "missing": 0, "details": [], "error": None},
+        "dead_code": {"count": 0, "details": [], "error": None},
+        "refactor_targets": [],
+    }
+
     issues_found = False
-    
+
     # 1. Dependency Hygiene
     try:
         dep_scanner = DependencyScanner()
@@ -1816,19 +1827,18 @@ def audit(apply, min_score, base, full_project, non_interactive, output, yes):
         if issues:
             issues_found = True
             unused = sum(1 for i in issues if i.issue_type == "unused")
-            missing = sum(1 for i in issues if i.issue_type == "missing")
-            console.print(f"\n[bold red]📦 Dependencies:[/] Found {unused} unused, {missing} missing.")
-            for i in issues[:5]:
-                console.print(f"  - [cyan]{i.package_name}[/] ({i.issue_type})")
-            if len(issues) > 5: console.print(f"  ...and {len(issues)-5} more.")
-            
+            missing_count = sum(1 for i in issues if i.issue_type == "missing")
+            audit_data["dependencies"]["unused"] = unused
+            audit_data["dependencies"]["missing"] = missing_count
+            audit_data["dependencies"]["details"] = [
+                {"package": i.package_name, "issue": i.issue_type, "reason": getattr(i, "reason", "")}
+                for i in issues
+            ]
             if apply and unused > 0:
                 deleted = dep_scanner.apply_fixes(issues)
-                console.print(f"  [bold green]⚡ Fixed:[/] Removed {deleted} unused dependencies.")
-        else:
-            console.print("[bold green]📦 Dependencies:[/] Perfect hygiene.")
+                audit_data["dependencies"]["fixed"] = deleted
     except Exception as e:
-        console.print(f"[bold red]📦 Dependencies:[/] Error: {e}")
+        audit_data["dependencies"]["error"] = str(e)
 
     # 2. Dead Code
     try:
@@ -1836,18 +1846,16 @@ def audit(apply, min_score, base, full_project, non_interactive, output, yes):
         dead_findings = dead_scanner.scan()
         if dead_findings:
             issues_found = True
-            console.print(f"\n[bold red]🔎 Dead Code:[/] Found {len(dead_findings)} unreachable entities.")
-            for f in dead_findings[:5]:
-                console.print(f"  - [cyan]{f.entity_name}[/] in {f.file_path}:{f.line_number}")
-            if len(dead_findings) > 5: console.print(f"  ...and {len(dead_findings)-5} more.")
-            
+            audit_data["dead_code"]["count"] = len(dead_findings)
+            audit_data["dead_code"]["details"] = [
+                {"entity": f.entity_name, "file": f.file_path, "line": f.line_number}
+                for f in dead_findings
+            ]
             if apply:
                 deleted = dead_scanner.apply_fixes(dead_findings)
-                console.print(f"  [bold green]⚡ Fixed:[/] Deleted {deleted} unreachable entities.")
-        else:
-            console.print("[bold green]🔎 Dead Code:[/] Zero unreachable entities.")
+                audit_data["dead_code"]["fixed"] = deleted
     except Exception as e:
-        console.print(f"[bold red]🔎 Dead Code:[/] Error: {e}")
+        audit_data["dead_code"]["error"] = str(e)
 
     # 3. Overall Health Score (Git-aware)
     try:
@@ -1868,21 +1876,79 @@ def audit(apply, min_score, base, full_project, non_interactive, output, yes):
         health_scanner = HealthScanner()
         report = health_scanner.scan(changed_files=changed_files)
         
-        console.print(f"\n[bold {'green' if report.score >= min_score else 'red'}]🏥 Health Score:[/] {report.score}/100 ({scope_label})")
-        
+        audit_data["health_score"] = report.score
+        audit_data["health_grade"] = report.grade
+        audit_data["scope"] = scope_label
+        audit_data["refactor_targets"] = [
+            {"function": t.qualified_name, "complexity": t.complexity,
+             "maintainability": t.maintainability_index, "reason": t.reason}
+            for t in report.refactor_targets
+        ]
+
         if report.score < min_score:
-            console.print(f"\n[bold red]❌ Audit Failed![/] Health below threshold ({min_score}).")
-            sys.exit(1)
+            audit_data["status"] = "fail"
         elif issues_found and not apply:
-            console.print(f"\n[bold yellow]⚠️ Audit Passed with Warnings![/] Score is ok, but issues exist. Run with [bold]--apply[/] to fix them.")
-            sys.exit(0)
+            audit_data["status"] = "warn"
         else:
-            console.print(f"\n[bold green]✅ Audit Passed Perfectly![/]")
-            sys.exit(0)
-            
+            audit_data["status"] = "pass"
+
     except Exception as e:
-        console.print(f"[bold red]❌ Audit Error:[/] {e}")
+        audit_data["status"] = "error"
+        audit_data["error"] = str(e)
+
+    # ── JSON output path ──────────────────────────────────────────
+    if output == "json":
+        exit_code = 1 if audit_data["status"] == "fail" else 0
+        print_json_and_exit(audit_data, exit_code)
+
+    # ── Rich text output (original behavior) ──────────────────────
+    console.print(Rule("[bold yellow]📋 Master Project Audit[/]"))
+
+    # Dependencies
+    dep = audit_data["dependencies"]
+    if dep.get("error"):
+        console.print(f"[bold red]📦 Dependencies:[/] Error: {dep['error']}")
+    elif dep["unused"] or dep["missing"]:
+        console.print(f"\n[bold red]📦 Dependencies:[/] Found {dep['unused']} unused, {dep['missing']} missing.")
+        for i in dep["details"][:5]:
+            console.print(f"  - [cyan]{i['package']}[/] ({i['issue']})")
+        if len(dep["details"]) > 5: console.print(f"  ...and {len(dep['details'])-5} more.")
+        if dep.get("fixed"):
+            console.print(f"  [bold green]⚡ Fixed:[/] Removed {dep['fixed']} unused dependencies.")
+    else:
+        console.print("[bold green]📦 Dependencies:[/] Perfect hygiene.")
+
+    # Dead Code
+    dc = audit_data["dead_code"]
+    if dc.get("error"):
+        console.print(f"[bold red]🔎 Dead Code:[/] Error: {dc['error']}")
+    elif dc["count"]:
+        console.print(f"\n[bold red]🔎 Dead Code:[/] Found {dc['count']} unreachable entities.")
+        for f in dc["details"][:5]:
+            console.print(f"  - [cyan]{f['entity']}[/] in {f['file']}:{f['line']}")
+        if dc["count"] > 5: console.print(f"  ...and {dc['count']-5} more.")
+        if dc.get("fixed"):
+            console.print(f"  [bold green]⚡ Fixed:[/] Deleted {dc['fixed']} unreachable entities.")
+    else:
+        console.print("[bold green]🔎 Dead Code:[/] Zero unreachable entities.")
+
+    # Health Score
+    score = audit_data["health_score"]
+    color = "green" if score >= min_score else "red"
+    console.print(f"\n[bold {color}]🏥 Health Score:[/] {score}/100 ({audit_data['scope']})")
+
+    if audit_data["status"] == "fail":
+        console.print(f"\n[bold red]❌ Audit Failed![/] Health below threshold ({min_score}).")
         sys.exit(1)
+    elif audit_data["status"] == "warn":
+        console.print(f"\n[bold yellow]⚠️ Audit Passed with Warnings![/] Score is ok, but issues exist. Run with [bold]--apply[/] to fix them.")
+        sys.exit(0)
+    elif audit_data["status"] == "error":
+        console.print(f"\n[bold red]❌ Audit Error:[/] {audit_data.get('error', 'Unknown')}")
+        sys.exit(1)
+    else:
+        console.print(f"\n[bold green]✅ Audit Passed Perfectly![/]")
+        sys.exit(0)
 
 @main.command(name="deps", help="""
 Analyze dependency hygiene.
@@ -2020,6 +2086,142 @@ def ui(host, port, non_interactive, output, yes):
     from hezgene.web.launcher import launch_dashboard
 
     launch_dashboard(host=host, port=port)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# GUARD — Auto-Revert Health Guard
+# ═══════════════════════════════════════════════════════════════════
+
+@main.group(name="guard", help="""
+Health Guard — Auto-revert safety net for AI-driven code evolution.
+
+Monitors your project's health score across changes. If the score drops
+by more than a configurable threshold, the guard can auto-revert the
+commit and fire a webhook to alert your team.
+
+Usage:
+  hezgene guard snapshot          # Save current score as baseline
+  hezgene guard check             # Compare current vs baseline
+  hezgene guard check --auto-revert --threshold 10
+  hezgene guard check --webhook https://hooks.slack.com/...
+  hezgene guard install           # Install as git pre-push hook
+""")
+def guard():
+    """Health Guard — safety net for AI-driven code changes."""
+    pass
+
+
+@guard.command(name="snapshot", help="""
+Save the current health score as the baseline for future comparisons.
+
+This creates/overwrites `.hezgene/guard_baseline.json`. Run this before
+making changes so the guard knows what "healthy" looks like.
+
+Example:
+  hezgene guard snapshot
+  hezgene guard snapshot --output json
+""")
+@autonomous_options
+def guard_snapshot(non_interactive, output, yes):
+    """Snapshot the current health score as baseline."""
+    from hezgene.guard import HealthGuard
+
+    g = HealthGuard(".")
+    baseline = g.snapshot()
+
+    if output == "json":
+        print_json_and_exit({"status": "success", "baseline": baseline}, 0)
+
+    console.print(Rule("[bold yellow]🛡️ Health Guard — Baseline Snapshot[/]"))
+    color = "green" if baseline["score"] >= 80 else ("yellow" if baseline["score"] >= 60 else "red")
+    console.print(f"\n  [bold]Score:[/] [{color} bold]{baseline['score']}/100[/] (Grade: {baseline['grade']})")
+    console.print(f"  [dim]Functions:[/] {baseline['total_functions']}")
+    console.print(f"  [dim]Dead Code:[/] {baseline['dead_code_count']}")
+    console.print(f"  [dim]Duplicates:[/] {baseline['duplicate_groups']}")
+    console.print(f"\n  [bold green]✅ Baseline saved to .hezgene/guard_baseline.json[/]")
+
+
+@guard.command(name="check", help="""
+Compare the current health score against the stored baseline.
+
+If the score has dropped by more than --threshold points, the check fails.
+Optionally auto-reverts the last commit or fires a webhook.
+
+Example:
+  hezgene guard check
+  hezgene guard check --threshold 5
+  hezgene guard check --auto-revert
+  hezgene guard check --webhook https://hooks.slack.com/services/...
+""")
+@click.option("--threshold", default=10, type=int, show_default=True, help="Maximum allowed score drop before failing")
+@click.option("--auto-revert", is_flag=True, help="Automatically `git revert HEAD` if the score drops")
+@click.option("--webhook", default=None, type=str, help="URL to POST a JSON alert on failure")
+@autonomous_options
+def guard_check(threshold, auto_revert, webhook, non_interactive, output, yes):
+    """Check health against baseline and react to regressions."""
+    from hezgene.guard import HealthGuard
+    from dataclasses import asdict
+
+    g = HealthGuard(".")
+    result = g.check(threshold=threshold, auto_revert=auto_revert, webhook_url=webhook)
+
+    if output == "json":
+        exit_code = 1 if result.status == "fail" else 0
+        print_json_and_exit(asdict(result), exit_code)
+
+    console.print(Rule("[bold yellow]🛡️ Health Guard — Check[/]"))
+
+    if result.status == "no_baseline":
+        console.print("\n  [bold yellow]⚠️ No baseline found.[/] Run [bold]hezgene guard snapshot[/] first.")
+        return
+
+    # Score comparison
+    delta_str = f"+{result.delta}" if result.delta >= 0 else str(result.delta)
+    b_color = "green" if result.baseline_score >= 80 else ("yellow" if result.baseline_score >= 60 else "red")
+    c_color = "green" if result.current_score >= 80 else ("yellow" if result.current_score >= 60 else "red")
+
+    console.print(f"\n  [dim]Baseline:[/] [{b_color}]{result.baseline_score}/100[/] ({result.baseline_grade})")
+    console.print(f"  [dim]Current: [/] [{c_color}]{result.current_score}/100[/] ({result.current_grade})")
+    console.print(f"  [dim]Delta:   [/] {delta_str} points (threshold: ±{result.threshold})")
+
+    if result.status == "fail":
+        console.print(f"\n  [bold red]❌ GUARD FAILED:[/] {result.message}")
+        if result.auto_reverted:
+            console.print("  [bold green]↩️ Auto-reverted HEAD commit.[/]")
+        if result.webhook_fired:
+            console.print("  [dim]📡 Webhook fired.[/]")
+        sys.exit(1)
+    else:
+        console.print(f"\n  [bold green]✅ GUARD PASSED:[/] {result.message}")
+
+
+@guard.command(name="install", help="""
+Install the Health Guard as a git pre-push hook.
+
+After installing, every `git push` will automatically check the health score
+against the baseline. If it regresses beyond the threshold, the push is blocked.
+
+Example:
+  hezgene guard install
+""")
+@autonomous_options
+def guard_install(non_interactive, output, yes):
+    """Install the guard as a git pre-push hook."""
+    from hezgene.guard import HealthGuard
+
+    g = HealthGuard(".")
+    try:
+        hook_path = g.install_hook("pre-push")
+        if output == "json":
+            print_json_and_exit({"status": "success", "hook_path": hook_path}, 0)
+        console.print(Rule("[bold yellow]🛡️ Health Guard — Install Hook[/]"))
+        console.print(f"\n  [bold green]✅ Pre-push hook installed at:[/] {hook_path}")
+        console.print("  [dim]Every `git push` will now check the health score against the baseline.[/]")
+        console.print("  [dim]Use `git push --no-verify` to bypass if needed.[/]")
+    except Exception as e:
+        if output == "json":
+            print_json_and_exit({"status": "error", "error": str(e)}, 1)
+        console.print(f"[bold red]❌ Failed to install hook: {e}[/]")
 
 
 if __name__ == "__main__":
